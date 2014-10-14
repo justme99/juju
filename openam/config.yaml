@@ -1,0 +1,15 @@
+options:
+  http_port:
+    type: int
+    default: 8080
+    description: HTTP port
+  amadmin_password:
+    type: string
+    default: cangetin
+    description: OpenAM amadmin password
+  java_opts:
+    type: string
+    default: -Xmx1024m -XX:MaxPermSize=256m
+    description: Java options for JVM
+
+

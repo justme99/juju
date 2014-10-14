@@ -1,0 +1,107 @@
+#!/bin/bash -ex
+#
+. hooks/common
+#
+function add () {
+	hostname=$(relation-get hostname);
+	ldap_port=$(relation-get ldap_port);
+	manager_password=$(relation-get manager_password);
+	base_dn=$(relation-get base_dn);
+	auth_name=$(relation-get auth_name);
+	auth_type=$(relation-get auth_type);
+	auth_realm=$(relation-get auth_realm);
+	
+	juju-log "hostname=$hostname, ldap_port=$ldap_port, manager_password=$manager_password, base_dn=$base_dn";
+	juju-log "auth_name=$auth_name, auth_type=$auth_type";
+
+	#
+	# Remove it if already existing, ignore error if it does not.
+	#
+	remove;
+	
+	if [ ! "$auth_realm" = "/" ]; then
+		$SSOADM create-realm \
+	    	--adminid amadmin \
+	    	--password-file $PWDFILE \
+			--realm $auth_realm || true;
+		juju-log "OpenAM realm '$auth_realm' created.";
+	fi
+
+	$SSOADM create-auth-instance \
+		--name $auth_name \
+		--authtype LDAP \
+		--realm $auth_realm \
+		--adminid amadmin \
+		--password-file ${PWDFILE} || true;
+
+	juju-log "Creating auth-instance named: $auth_name."
+
+	$SSOADM update-auth-instance \
+		--name $auth_name \
+		--realm $auth_realm  \
+		--adminid amadmin \
+		--password-file ${PWDFILE} \
+		--attributevalues \
+		"iplanet-am-auth-ldap-auth-level=5" \
+		"iplanet-am-auth-ldap-server=$hostname:$ldap_port" \
+		"iplanet-am-auth-ldap-bind-dn=cn=Directory Manager" \
+		"iplanet-am-auth-ldap-bind-passwd=$manager_password" \
+		"iplanet-am-auth-ldap-user-search-attributes=uid" \
+		"iplanet-am-auth-ldap-user-search-attributes=mail" \
+		"iplanet-am-auth-ldap-return-user-dn=false" \
+		"iplanet-am-auth-ldap-base-dn=$base_dn" || true;
+
+	juju-log "Updated datastore named $auth_name";
+
+	$SSOADM create-datastore \
+		--name $auth_name \
+		--realm $auth_realm \
+		--adminid amadmin \
+		--password-file ${PWDFILE} \
+		--datatype $auth_type \
+		--attributevalues \
+		"sun-idrepo-ldapv3-config-authid=cn=Directory Manager" \
+		"sun-idrepo-ldapv3-config-organization_name=$base_dn" \
+		"sun-idrepo-ldapv3-config-ldap-server=$hostname:$ldap_port" \
+		"sun-idrepo-ldapv3-config-psearchbase=$base_dn" \
+		"sun-idrepo-ldapv3-config-authpw=$manager_password" \
+		"sun-idrepo-ldapv3-config-people-container-name=ou" \
+		"sun-idrepo-ldapv3-config-people-container-value=People"
+
+	juju-log "OpenDJ Autentication and Datastore, created."
+}
+
+function remove() {
+	auth_name=$(relation-get auth_name);
+	auth_realm=$(relation-get auth_realm);
+	# Remove $OPENDJ_DATASTORE in case it already exist
+	$SSOADM delete-datastores \
+		--names $auth_name \
+		--realm $auth_realm \
+		--adminid amadmin \
+		--password-file ${PWDFILE} || true;
+}
+
+#
+# Remove the embedded datastore
+#
+function remove_embedded() {
+	echo "Deleting default 'embeded' datastore."
+	$SSOADM delete-datastores --names embedded --realm $OPENAM_REALM --adminid amadmin --password-file ${PWDFILE} || true
+
+}
+juju-log "< --- START creating OpenDJ Authentication and Datastore --- >"
+
+cmd=$1;
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	add)
+     	add;
+        ;;
+	remove)
+#        remove;
+        ;;
+    *)
+		juju-log "Unknown command '$cmd'.";
+	;;
+esac

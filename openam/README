@@ -1,0 +1,79 @@
+Overview
+--------
+
+J2EE Deployer provides a mechanism for deploying WAR application files on
+Juju deployed J2EE web containers, for example Tomcat.  Deployed as a
+subordinate charm, applications may be subsequently upgraded across all of your
+Juju services/units.
+ 
+Usage
+-----
+
+Copy your J2EE WAR files (and/or unpacked '*.war' directories) to the charm's
+'deploy' directory, then deploy:
+
+  juju deploy --repository . local:j2ee-deployer <application name>
+
+where 'application name' is the service name your application will be known as.
+For example:
+
+  juju deploy --repository . local:j2ee-deployer myapp
+
+As this is a subordinate charm, deploying merely stores the charm within Juju's
+file storage.  To deploy to a container:
+
+  # deploy Tomcat container
+  juju deploy tomcat tomcat
+
+  # deploy to container
+  juju add-relation tomcat myapp
+
+By default your application will be deployed under its name (after removing the
+'.war' suffix), e.g. 'myapp.war' is deployed under '/myapp'.  If you want to
+deploy under a different path, you can edit the 'war-config' option.  This is a
+comma separated list of name and path colon separated values:
+
+  <name>:<path>,<name>:<path>
+
+For example:
+
+  juju set myapp "war-config=myapp:/newpath"
+  juju set myapp "war-config=myapp:/newpath,myapp2:/newpath2"
+
+A path of '/' specifies deploying to the root of the container.
+
+To upgrade your application, overwrite existing WAR files in the 'deploy'
+directory with the new ones.  Then upgrade the charm:
+
+  juju upgrade-charm --repository . myapp
+
+Deploying/upgrading happens across all container units that are service
+associated with your application.  This makes it very convenient to deploy new
+containers within a service that automatically deploy your application:
+
+  # deploy a second Tomcat unit
+  # myapp will be automatically deployed
+  juju add-unit tomcat
+
+Your application service can be associated with multiple container services
+allowing a single application version to be managed across multiple groups of
+units.  In addition, multiple application services may be associated to the same
+container service, allowing deployment of multiple managed applications to one
+or more machines.
+
+Known Issues
+------------
+
+As Juju doesn't have a concept of an uninstall hook, typically you would
+undeploy an application by removing it from the 'deploy' directory and then
+upgrading the charm.  Juju (as of Precise) doesn't remove the contents of
+previous charms before extracting an upgraded one.  This means the only way to
+undeploy an application deployed as a WAR file is to create a zero sized file:
+
+  # create empty file
+  cp /dev/null deploy/myapp.war
+  # upgrade
+  juju upgrade-charm --repository . myapp
+
+For obvious reasons, this won't work with unpacked '*.war' directories so you
+would have to deploy a new unit.

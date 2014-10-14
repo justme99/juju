@@ -1,0 +1,152 @@
+#!/bin/bash -ex
+. hooks/common
+
+function changed() {
+	juju-log "openidc-provider-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+function departed() {
+	juju-log "openidc-provider-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+
+	# Delete service if already present
+	$SSOADM remove-svc-realm \
+	--verbose \
+	--realm $OPENAM_REALM \
+	--servicename OAuth2Provider \
+    --adminid $OPENAM_ADMIN \
+    --password-file $PWDFILE >/dev/null || true
+
+    # Delete the agent if present
+	$SSOADM delete-agents \
+	--verbose \
+	--agentnames OIDCAgent \
+	--realm $OPENAM_REALM \
+    --adminid $OPENAM_ADMIN \
+    --password-file $PWDFILE >/dev/null || true
+
+    # Delete the policy
+    $SSOADM delete-policies \
+	--realm / \
+	--adminid ${OPENAM_ADMIN} \
+	--password-file ${PWDFILE} \
+	--policynames OIDCOAuth2ProviderPolicy || true
+}
+
+function joined() {
+	juju-log "openidc-provider-relation-joined invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+
+	relation-set base_dn=$(config-get base_dn);
+#	relation-set ldap_port=$(config-get ldap_port);
+	relation-set manager_password=$(config-get manager_password);
+	relation-set hostname=$(unit-get private-address);
+	relation-set auth_name=$(config-get auth_name) auth_type=$(config-get auth_type);
+# ---
+#	relation-set base_dn="dc=example,dc=com";
+#	relation-set ldap_port="389";
+#	relation-set manager_password="secret12";
+#	relation-set hostname=$(unit-get private-address);
+#	relation-set auth_name=$(config-get auth_name) auth_type=$(config-get auth_type);
+# Remove the service if it already exists
+
+
+# Create the service in the demo realm with default attributes
+$SSOADM add-svc-realm \
+	--verbose \
+	--realm $OPENAM_REALM \
+	--servicename OAuth2Provider \
+    --adminid $OPENAM_ADMIN \
+    --password-file $PWDFILE \
+    --attributevalues \
+	"forgerock-oauth2-provider-authorization-code-lifetime=60" \
+	"forgerock-oauth2-provider-issue-refresh-token=false" \
+	"forgerock-oauth2-provider-scope-implementation-class=org.forgerock.openam.oauth2.provider.impl.ScopeImpl" \
+	"forgerock-oauth2-provider-refresh-token-lifetime=60000000" \
+	"forgerock-oauth2-provider-access-token-lifetime=6000000"
+
+# Create the OIDC/OAuth2 Agent
+$SSOADM create-agent \
+	--verbose \
+	--agentname OIDCAgent \
+	--agenttype OAuth2Client \
+	--realm $OPENAM_REALM \
+  	--adminid $OPENAM_ADMIN \
+  	--password-file $PWDFILE \
+  	--attributevalues \
+  	"com.forgerock.openam.oauth2provider.responseTypes[0]=code" \
+	"com.forgerock.openam.oauth2provider.responseTypes[1]=token" \
+	"com.forgerock.openam.oauth2provider.responseTypes[2]=id_token" \
+	"com.forgerock.openam.oauth2provider.responseTypes[3]=code token" \
+	"com.forgerock.openam.oauth2provider.responseTypes[4]=token id_token" \
+	"com.forgerock.openam.oauth2provider.responseTypes[5]=code id_token" \
+	"com.forgerock.openam.oauth2provider.responseTypes[6]=code token id_token" \
+	"com.forgerock.openam.oauth2provider.description[0]=" \
+	"com.forgerock.openam.oauth2provider.contacts[0]=" \
+  	"com.forgerock.openam.oauth2provider.redirectionURIs[0]=https://$OIDC_FQDN:$HTTPD_SSL_PORT/secret" \
+	"sunIdentityServerDeviceStatus=Active" \
+	"userpassword=$DEMO_MASTER_PASSWORD" \
+	"com.forgerock.openam.oauth2provider.defaultScopes[0]=" \
+	"com.forgerock.openam.oauth2provider.scopes[0]=openid|OIDC" \
+	"com.forgerock.openam.oauth2provider.scopes[1]=email|Email" \
+	"com.forgerock.openam.oauth2provider.scopes[2]=profile|Profile" \
+	"com.forgerock.openam.oauth2provider.clientType=Confidential" \
+	"com.forgerock.openam.oauth2provider.idTokenSignedResponseAlg=HS256" \
+	"com.forgerock.openam.oauth2provider.name[0]=OIDC Apache module"
+
+
+# Export policy
+# /opt/demo/openam/ssoadm/openam/bin/ssoadm list-policies --realm / --adminid amadmin --password-file /opt/demo/openam/ssoadm/pwd.txt --policynames OAuth2ProviderPolicy --outfile oidc-policy.xml-org -v
+# https://$HOSTNAME_PREFIX-am.openrock.org/openam
+cat << EOF > /tmp/oidc/oidc-policies.xml
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE Policies PUBLIC "-//OpenSSO Policy Administration DTD//EN" "jar://com/sun/identity/policy/policyAdmin.dtd">
+<Policies>
+<Policy name="OIDCOAuth2ProviderPolicy" referralPolicy="false" active="true" >
+<Rule name="OAuth2ProviderRule">
+<ServiceName name="iPlanetAMWebAgentService" />
+<ResourceName name="https://$OPENAM_PUBLIC_FQDN:$TOMCAT_HTTPS_PORT/openam/oauth2/authorize?*" />
+<AttributeValuePair>
+<Attribute name="POST" />
+<Value>allow</Value>
+</AttributeValuePair>
+<AttributeValuePair>
+<Attribute name="GET" />
+<Value>allow</Value>
+</AttributeValuePair>
+</Rule>
+<Subjects name="Subjects:1405436095789LSBpVk0=" description="">
+<Subject name="OAuth2ProviderSubject" type="AuthenticatedUsers" includeType="inclusive">
+</Subject>
+</Subjects>
+</Policy>
+</Policies>
+EOF
+
+$SSOADM create-policies \
+	--realm / \
+	--adminid ${OPENAM_ADMIN} \
+	--password-file ${PWDFILE} \
+	--xmlfile /tmp/oidc/oidc-policies.xml
+
+}
+
+
+function broken() {
+	juju-log "openidc-provider-relation-broken invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+cmd=$(basename "$0")
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	openidc-provider-relation-changed)
+        changed;
+        ;;
+	openidc-provider-relation-departed)
+        departed;
+        ;;
+    openidc-provider-relation-joined)
+		joined;
+		;;
+	openidc-provider-relation-broken)
+		broken;
+		;;
+esac

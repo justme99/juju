@@ -1,0 +1,29 @@
+options:
+  ldap_port:
+    type: int
+    default: 389
+    description: LDAP port
+  manager_password:
+    type: string
+    default: secret12
+    description: OpenDJ 'Directory Manager' password.
+  base_dn:
+    type: string
+    default: "dc=example,dc=com"
+    description: OpenDJ 'Base DN'.
+  rest_port:
+    type: int
+    default: 8000
+    description: RESTful API port.
+  auth_realm:
+    type: string
+    default: /opendj
+    description: The realm to be used when connected to OpenAM as a authentication store.
+  auth_name:
+    type: string
+    default: opendj
+    description: The name of the authentication store to be created when connected to OpenAM.
+  auth_type:
+    type: string
+    default: LDAPv3ForOpenDS
+    description: The type of the authentication store to be created when connected to OpenAM. For OpenDJ this is 'LDAPv3ForOpenDS'.

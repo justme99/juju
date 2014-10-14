@@ -1,0 +1,44 @@
+name: openam
+summary: OpenAM - AM made easy and secure for the web
+maintainer: Stein Myrseth <stein.myrseth@forgerock.com>
+description: |
+  The only "all-in-one" open source access management solution provides the most comprehensive consumer-facing identity relationship management (IRM) services,
+  as well as traditional access management capabilities.
+  Designed from inception to provide services for the web, cloud, mobile devices and things, OpenAM has a highly scalable, modular, easy to deploy architecture that includes Authentication, SSO, Authorization, Federation, Entitlements, Adaptive Authentication, Strong Authentication and Web Services Security - in a single, unified product.
+  - See more at: http://forgerock.com/products/open-identity-stack/openam
+categories: ["applications"]
+provides:
+  openam-agent:
+    interface: openam-agent
+    optional: true
+  openidc-discovery:
+    interface: openidc
+    optional: true
+  openidc-provider:
+    interface: openidc
+    optional: true
+  saml-idp:
+     interface: saml2
+     optional: true
+  saml-sp:
+      interface: saml2
+  datastore-dj:
+     interface: ldap-v3
+     optional: true
+  datastore-ad:
+     interface: ldap-ad
+     optional: true
+requires:
+  db:
+    interface: mysql
+    optional: true
+  splunk:
+     interface: splunk-forwarder
+     optional: true
+  elasticsearch:
+     interface: elasticsearch-appender
+     optional: true
+peers:
+  site:
+    interface: http
+    optional: true

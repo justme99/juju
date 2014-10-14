@@ -1,0 +1,93 @@
+#!/bin/bash -ex
+
+function changed() {
+	juju-log "replication-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+
+	unit=$JUJU_UNIT_NAME;
+	remote_unit=$JUJU_REMOTE_UNIT;
+	local_id=$(echo $unit | cut -d/ -f2);
+	remote_unit_id=$(echo $remote_unit | cut -d/ -f2);
+	if [ "$local_id" -lt "$remote_unit_id" ]; then
+		juju-log "Let the unit with the highest id number (last one) should set up replication."
+		return;
+	fi
+	REPLICATION_IP=$(relation-get remote_unit_private_hostname);
+  if [ -z "$REPLICATION_IP" ]; then
+    juju-log "REPLICATION_IP is not set yet, returning a waiting for a new call."
+    return;
+  fi
+	LOCAL_IP=$(unit-get private-address);
+	juju-log "local_hostname:$local_hostname, remote_hostname:$remote_hostname";
+  #
+  # Configure replication
+  #
+  /opt/opendj/bin/dsreplication enable \
+    --host1 $REPLICATION_IP \
+    --port1 5555 \
+    --bindDN1 "cn=directory manager" \
+    --bindPassword1 secret12 \
+    --replicationPort1 8989 \
+    --host2 $LOCAL_IP \
+    --port2 5555 \
+    --bindDN2 "cn=directory manager" \
+    --bindPassword2 secret12 \
+    --replicationPort2 8989 \
+    --adminUID admin \
+    --adminPassword password \
+    --baseDN "dc=example,dc=com" \
+    --trustAll \
+    --no-prompt || true;
+  #
+  # Initialize replication
+  #
+  /opt/opendj/bin/dsreplication initialize \
+    --baseDN "dc=example,dc=com" \
+    --adminUID admin \
+    --adminPassword password \
+    --hostSource $REPLICATION_IP \
+    --portSource 5555 \
+    --hostDestination $LOCAL_IP \
+    --portDestination 5555 \
+    --trustAll \
+    --no-prompt || true;
+}
+
+function joined() {
+	juju-log "replication-relation-joined on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	relation-set remote_unit_private_hostname=$(unit-get private-address);
+}
+
+function departed() {
+  juju-log "ldap-relation-departed";
+  LOCAL_IP=$(unit-get private-address);
+
+  /opt/opendj/bin/dsreplication disable \
+  --disableAll \
+  --port 5555 \
+  --hostname $LOCAL_IP \
+  --bindDN "cn=Directory Manager" \
+  --adminPassword password \
+  --trustAll \
+  --no-prompt || true;
+}
+
+function broken() {
+	juju-log "replication-relation-broken on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+cmd=$(basename "$0")
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	replication-relation-changed)
+        changed;
+        ;;
+	replication-relation-departed)
+        departed;
+        ;;
+    replication-relation-joined)
+		joined;
+		;;
+	replication-relation-broken)
+		#broken;
+		;;
+esac

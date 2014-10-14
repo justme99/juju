@@ -1,0 +1,52 @@
+#!/bin/bash -ex
+
+function changed() {
+	juju-log "datastore-dj-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+function departed() {
+	juju-log "datastore-dj-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	relation-set auth_name=$(config-get auth_name);
+}
+
+function joined() {
+	juju-log "datastore-dj-relation-joined invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+#	MANAGER_PWD=$(config-get manager_password);
+#	BASE_DN=$(config-get base_dn);
+#	LDAP_PORT=$(config-get ldap_port);
+#	REST_PORT=$(config-get rest_port);
+
+	relation-set base_dn=$(config-get base_dn);
+	relation-set ldap_port=$(config-get ldap_port);
+	relation-set manager_password=$(config-get manager_password);
+	relation-set hostname=$(unit-get private-address);
+	relation-set auth_name=$(config-get auth_name) auth_type=$(config-get auth_type);
+# ---
+#	relation-set base_dn="dc=example,dc=com";
+#	relation-set ldap_port="389";
+#	relation-set manager_password="secret12";
+#	relation-set hostname=$(unit-get private-address);
+#	relation-set auth_name=$(config-get auth_name) auth_type=$(config-get auth_type);
+}
+
+
+function broken() {
+	juju-log "datastore-dj-relation-broken invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+cmd=$(basename "$0")
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	datastore-dj-relation-changed)
+        changed;
+        ;;
+	datastore-dj-relation-departed)
+        departed;
+        ;;
+    datastore-dj-relation-joined)
+		joined;
+		;;
+	datastore-dj-relation-broken)
+		broken;
+		;;
+esac

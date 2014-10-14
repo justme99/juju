@@ -1,0 +1,25 @@
+name: opendj
+summary: OpenDJ - Directory servies made easy and secure for the web
+maintainer: Stein Myrseth <stein.myrseth@forgerock.com>
+description: |
+  OpenDJ is the only 100 percent open-source big data platform that combines the security of a proven directory with the accessibility of a database. Lightweight and easy to embed, it allows you to easily share real-time identity data across enterprise, cloud, social and mobile environments - a practical necessity for managing today identity relationship management challenges (IRM). 
+  With OpenDJ, you no longer need to be an LDAP expert; choose either LDAP or REST to access identity data using a single solution that can replicate data across on and off-premise applications.
+  - See more at: http://forgerock.com/products/open-identity-stack/opendj
+categories: ["applications"]
+subordinate: false
+provides:
+  ldap:
+     interface: ldap-v3
+requires:
+  datastore-dj:
+     interface: ldap-v3
+     optional: true
+  splunk:
+     interface: splunk-forwarder
+     optional: true
+  elasticsearch:
+     interface: elasticsearch-appender
+     optional: true
+peers:
+  replication:
+    interface: replication
