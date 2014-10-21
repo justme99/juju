@@ -1,56 +1,122 @@
 #!/bin/bash -ex
 
 . hooks/common
-. hooks/tomcat.sh
 
 function install() {
+	ACCEPT_LICENSES=$(config-get accept_license);
+	juju-log "ACCEPT_LICENSES:$ACCEPT_LICENSES";
+	if [ "${ACCEPT_LICENSES}" != "True" ]; then
+		juju-log "License has to be accepted before installing."
+		exit 1
+	fi
 	cd $CHARM_DIR;
 	juju-log "Installing package unzip and tomcat7";
-	# openjdk-7-jdk
-#	apt-get update;
+
 	apt-get -y -qq install unzip default-jre tomcat7;
 	cp /var/lib/tomcat7/conf/server.xml /var/lib/tomcat7/conf/server.xml-org
-	wget -q $REPO_HOME/$OPENAM_WAR;
-	wget -q $REPO_HOME/$SSOADM_FILE;
-	wget -q $REPO_HOME/$CONFIGURATOR_FILE;
-}
-
-function setupAM() {
-	HTTP_PORT=$(config-get http_port);
-	HOSTNAME_PUBLIC=$(unit-get public-address);
-	HOSTNAME_PRIVAT=$(unit-get private-address);
-	OPENAM_ADMIN="amadmin";
-	OPENAM_URL="http://$HOSTNAME_PUBLIC:$HTTP_PORT";
-	OPENAM_DEPLOYMENT_URI="/openam";
-
-
-	cp /var/lib/tomcat7/conf/server.xml-org /var/lib/tomcat7/conf/server.xml
-
-	if [ ! "$HTTP_PORT" -eq 8080 ]; then
-		sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" /var/lib/tomcat7/conf/server.xml;
-	fi
-	if [ -f /var/lib/tomcat7/webapps/ROOT/index.html ]; then
+		if [ -f /var/lib/tomcat7/webapps/ROOT/index.html ]; then
 		rm /var/lib/tomcat7/webapps/ROOT/index.html
 	fi
+
 	echo "<html>" > /var/lib/tomcat7/webapps/ROOT/index.html
 	echo "<head>" >> /var/lib/tomcat7/webapps/ROOT/index.html
 	echo "<meta http-equiv=\"refresh\" content=\"0; url=/openam\" /> " >> /var/lib/tomcat7/webapps/ROOT/index.html
 	echo "</head>" >> /var/lib/tomcat7/webapps/ROOT/index.html
 	echo "</html>" >> /var/lib/tomcat7/webapps/ROOT/index.html
 
-	open-port ${HTTP_PORT};
+	wget -q $REPO_HOME/$OPENAM_WAR;
+	wget -q $REPO_HOME/$SSOADM_FILE;
+	wget -q $REPO_HOME/$CONFIGURATOR_FILE;
+}
 
+#
+# If the config params Tomcat port or the JAVA_OPTS is the only changes, there
+# is no need to do a complete reinstall of OpenAM.
+#
+
+function setupAM() {
+#	 Need to invalidate any current relations since OpenAM will be reinstalled
+#    OPENDJ_ID=$(relation-ids datastore-dj);
+#    OPENDJ_UNIT_ID=$(relation-list -r $OPENDJ_ID);
+#    juju-log "IDS:$OPENDJ_ID";
+#    juju-log "UNIT_ID:$OPENDJ_UNIT_ID";
+#    relation-get -r $OPENDJ_ID - $OPENDJ_UNIT_ID;
+#    relation-set $OPENDJ_ID foo=bar;
+#    exit 0;
+
+	AMADMIN_PWD=$(config-get amadmin_password);
+	if [ -z "${AMADMIN_PWD}" ]; then
+		juju-log "OpenAM amadmin password has to be set before installation can proceed."
+		exit 1
+	fi
+	if [ ${#AMADMIN_PWD} -lt 8 ]; then
+		juju-log "Administrator password must be atleast 8 characters."
+		exit 1
+	fi
+
+	tomcatObtainTomcatLock;
+	stop;
+	
+	HTTP_PORT=$(config-get http_port);
+	HOSTNAME_PUBLIC=$(unit-get public-address);
+	HOSTNAME_PRIVAT=$(unit-get private-address);
+	OPENAM_ADMIN="amadmin";
+	OPENAM_URL="http://$HOSTNAME_PUBLIC:$HTTP_PORT";
+	OPENAM_DEPLOYMENT_URI="/openam";
+		
+#	http_port
+	OLD_PORT=$(grep -i "Connector port=\"" /var/lib/tomcat7/conf/server.xml | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
+	juju-log "OLD_PORT:$OLD_PORT, HTTP_PORT:$HTTP_PORT";
+	if [ "$OLD_PORT" != "$HTTP_PORT" ]; then
+		close-port ${OLD_PORT};
+		# Remove references to prevously installations if present
+		cp /var/lib/tomcat7/conf/server.xml-org /var/lib/tomcat7/conf/server.xml
+		if [ ! "$HTTP_PORT" -eq 8080 ]; then
+			sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" /var/lib/tomcat7/conf/server.xml;
+		fi
+	fi
+
+	open-port ${HTTP_PORT};
 	juju-log "Opened port:$HTTP_PORT used by Tomcat/Openam.";
 
+#	java_opts
 	JAVA_ARGS=$(config-get java_opts);
+	OLD_ARGS="";
+	# Could have been changed, then need to be recreated
+	# If file exists, OpenAM has been fully deployed earlier
+	if [ -f /usr/share/tomcat7/bin/setenv.sh ]; then
+		rm /usr/share/tomcat7/bin/setenv.sh
+		OLD_ARGS=$(</usr/share/tomcat7/bin/setenv.sh);
+		juju-log "OLD_ARGS:$OLD_ARGS, JAVA_ARGS:'JAVA_OPTS=\"$JAVA_ARGS\"'";
+		#if [ "$OLD_ARGS" != "JAVA_OPTS=\"$JAVA_ARGS\"" ]; then
+		#fi
+		echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
+	fi
+	juju-log "OLD_ARGS:$OLD_ARGS, JAVA_ARGS:'JAVA_OPTS=\"$JAVA_ARGS\"'";
 	juju-log "JAVA_OPTS is set to: $JAVA_ARGS";
-	echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
+
+# 	AMADMIN PWD
+	OLD_PWD="";
+	if [ -f $PWDFILE ]; then
+		OLD_PWD=$(<$PWDFILE);
+	fi
+
+	juju-log "OLD_PWD:'$OLD_PWD', AMADMIN_PWD:'$AMADMIN_PWD'";
+	if [ ! -z "$OLD_PWD" -a "$OLD_PWD" == "$AMADMIN_PWD" ]; then
+		# Then there is no need to reinstall OpenAM, just restarting Tomcat with the new config
+		juju-log "PWD EQUAL, just restarting Tomcat, nothing more to do";
+		service tomcat7 restart;
+		return;
+	fi
+	
+	juju-log "AMADMIN password is different, need to reinstall";
 
 	if [ -d "/root/.openamcfg" ];then
 		rm -fr /root/.openamcfg;
 	fi
 
 	mkdir /root/.openamcfg;
+	# Make sure the tomcat user can write to the "home" directory 
 	chown -R tomcat7 /root/.openamcfg;
 	juju-log "Created .openssocfg directory for OpenAM install check.";
 
@@ -68,17 +134,10 @@ function setupAM() {
 		rm -f /var/lib/tomcat7/webapps/openam.war;
 	fi
 
-	tomcatObtainTomcatLock;
-	tomcatStop;
-
-	#WAR_FILE=$(ls -C1 $CHARM_DIR/*.war);
-	#cp $WAR_FILE "/var/lib/tomcat7/webapps/openam.war";
-	#cp $OPENAM_WAR "/var/lib/tomcat7/webapps/openam.war";
-	#unzip -qqo /var/lib/tomcat7/webapps/openam.war -d /var/lib/tomcat7/webapps/openam
 	unzip -qqo $OPENAM_WAR -d /var/lib/tomcat7/webapps/openam
 	chown -R tomcat7 /var/lib/tomcat7/webapps;
 
-	tomcatStart;
+	start;
 	tomcatReleaseTomcatLock;
 
 	#
@@ -103,13 +162,11 @@ function setupAM() {
 
 	HOSTNAME=$(unit-get public-address);
 	DOMAIN=$(echo "$HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
-	DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
+#	DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
 
 	juju-log "Running configurator for fqdn '$HOSTNAME' with domain: '$DOMAIN'."
 
-	#cd $CHARM_HOME/deploy;
-	ADMIN_PWD=$(config-get amadmin_password);
-	AMLDAPUSERPASSWD="pa$ADMIN_PWD";
+	AMLDAPUSERPASSWD="pa$AMADMIN_PWD";
 
 cat << ENDCONFIG > config.conf
 SERVER_URL=http://$HOSTNAME:$HTTP_PORT
@@ -118,13 +175,13 @@ BASE_DIR=/usr/share/tomcat7/openam
 locale=en_US
 PLATFORM_LOCALE=en_US
 AM_ENC_KEY=1234567890
-ADMIN_PWD=$ADMIN_PWD
+ADMIN_PWD=$AMADMIN_PWD
 AMLDAPUSERPASSWD=$AMLDAPUSERPASSWD
 COOKIE_DOMAIN=.$DOMAIN
 #
 DATA_STORE=embedded
 DIRECTORY_SSL=SIMPLE
-DIRECTORY_SERVER=$HOSTNAME
+DIRECTORY_SERVER=localhost
 DIRECTORY_PORT=50389
 DIRECTORY_ADMIN_PORT=4444
 DIRECTORY_JMX_PORT=1689
@@ -148,11 +205,19 @@ juju-log "OpenAM configurator completed.";
 }
 
 function install-ssoadm() {
+	AMADMIN_PWD=$(config-get amadmin_password);
 	export JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
-	if [ -d $CHARM_DIR/openam/ssoadm ]; then
-		juju-log "Already installed.";
+	if [ -d $CHARM_DIR/ssoadm ]; then
+		juju-log "SSOADM already installed.";
+		echo "$AMADMIN_PWD" > $PWDFILE;
+        chmod 400 $PWDFILE;
 		return; 
 	fi
+	mkdir -p $CHARM_DIR/ssoadm;
+	cd $CHARM_DIR/ssoadm;
+
+    echo "$AMADMIN_PWD" > $PWDFILE;
+    chmod 400 $PWDFILE;
 
 	until [ ! -z "$(curl --silent --show-error --connect-timeout 1 --max-time 5 -I http://localhost:$HTTP_PORT 2>/dev/null | grep 'Coyote')" ];
 	do
@@ -168,12 +233,6 @@ function install-ssoadm() {
 	#
 	# Installing SSOAM
 	#
-	cd $CHARM_DIR;
-	if [ -d ssoadm ]; then
-		rm -fr ssoadm/
-	fi
-	mkdir ssoadm;
-	cd ssoadm;
 	unzip -qqo ../$SSOADM_FILE;
 	#
 	if [ -f "/usr/share/tomcat7/openam/bootstrap" ]; then
@@ -184,20 +243,29 @@ function install-ssoadm() {
     	else
     		./setup --path /usr/share/tomcat7/openam -d $CHARM_DIR/ssoadm/ssoadm-debug -l $CHARM_DIR/ssoadm/ssoadm-log;
     	fi
-		echo "cangetin" > $PWDFILE;
-		chmod 400 $PWDFILE;
 		juju-log "SSOADM installed."
 	else
 		juju-log --log-level ERROR "OpenAM bootstrap not found !!!!"
 	fi
 }
 
+function tomcatObtainTomcatLock() {
+	(umask 0077; touch /etc/tomcat7/tomcat.lock)
+	exec 9> /etc/tomcat7/tomcat.lock; flock 9
+}
+
+function tomcatReleaseTomcatLock() {
+	exec 9>&-
+}
+
 function start() {
-	juju-log "START????"
+	service tomcat7 start;
+	juju-log "tomcat7 starting."
 }
 
 function stop() {
-	juju-log "STOP???"
+	service tomcat7 stop;
+	juju-log "tomcat7 shuting down."
 }
 
 
@@ -217,4 +285,3 @@ case "$cmd" in
 		stop;
 		;;
 esac
-

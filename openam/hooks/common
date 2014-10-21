@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-export REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/trunk";
+export REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
 
 export OPENAM_WAR="OpenAM-12.0.0-SNAPSHOT.war";
 export CONFIGURATOR_FILE="SSOConfiguratorTools-12.0.0-SNAPSHOT.zip";
@@ -9,7 +9,6 @@ export SSOADM_FILE="SSOAdminTools-12.0.0-SNAPSHOT.zip";
 export OPENAM_REALM="/"
 export PWDFILE="$CHARM_DIR/ssoadm/pwd.txt";
 export SSOADM="$CHARM_DIR/ssoadm/openam/bin/ssoadm";
-#export SSOADM="/usr/share/tomcat7/openam/bin/ssoadm";
 export JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
 export OPENAM_RELEASE=$(echo $OPENAM_WAR | cut -d '-' -f2 | sed 's$.war$$');
 # The following will get the OpenAM version as a 4 digit number

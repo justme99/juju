@@ -7,6 +7,9 @@ function joined() {
 	bootstrap=$(</usr/share/tomcat7/openam/bootstrap);
 	relation-set bootstrap="$bootstrap";
 	juju-log "openam-agent-relation-joined from $JUJU_REMOTE_UNIT";
+	# Needed for remote SSSOADM
+	amadmin_pwd=$(config-get amadmin_password);
+	relation-set amadmin_pwd="$amadmin_pwd";
 }
 
 function departed() {
