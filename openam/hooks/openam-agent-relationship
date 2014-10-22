@@ -14,6 +14,12 @@ function joined() {
 
 function departed() {
 	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
+	AGENT_NAME=$(relation-get agent_name);
+
+    $SSOADM delete-agents --realm / \
+        --agentnames $AGENT_NAME \
+        --adminid amadmin \
+       	--password-file $PWDFILE || true;
 }
 
 function broken() {
@@ -22,6 +28,42 @@ function broken() {
 
 function changed() {
 	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
+	OPENAM_URL="http://$(unit-get public-address):$(config-get http_port)/openam";
+
+	HOSTNAME_PUBLIC=$(unit-get public-address);
+    DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
+
+    APACHE_PORT=$(relation-get apache_port);
+    if [ -z "$APACHE_PORT" ]; then
+    	return;
+    fi
+    AGENT_URL=$(relation-get agent_url);
+    AGENT_NAME=$(relation-get agent_name);
+
+	$SSOADM create-agent --realm / \
+    	--agentname $AGENT_NAME \
+        --agenttype WebAgent \
+        --attributevalues \
+        "userpassword=pacangetin" \
+        "com.sun.identity.agents.config.sso.only=true" \
+        "com.sun.identity.agents.config.cdsso.enable=false" \
+        "com.sun.identity.agents.config.fqdn.check.enable=false" \
+        "com.sun.identity.agents.config.profile.attribute.fetch.mode=HTTP_HEADER" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[dn]=dn" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[cn]=cn" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[mail]=mail" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[uid]=uid" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[fullName]=fullName" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[givenName]=givenName" \
+        "com.sun.identity.agents.config.profile.attribute.mapping[telephoneNumber]=telephoneNumber" \
+        "com.sun.identity.ageents.config.cdsso.cookie.domain[0]=.$DOMAIN" \
+        "sunIdentityServerDeviceKeyValue[0]=agentRootURL=http://$(unit-get public-address):$APACHE_PORT/" \
+        --serverurl $OPENAM_URL \
+        --agenturl $AGENT_URL \
+        --adminid amadmin \
+        --password-file $PWDFILE || true;
+
+	juju-log "OpenAM PA created."
 }
 
 cmd=$(basename "$0");
