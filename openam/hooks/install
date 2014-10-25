@@ -1,8 +1,14 @@
 #!/bin/bash -ex
 
 . hooks/common
+export TOMCAT_HOME="/var/lib/tomcat7";
+export TOMCAT_CONFIG_FILE="$TOMCAT_HOME/conf/server.xml";
+export KEYSTORE="$TOMCAT_HOME/conf/keystore.jks";
+export KEYSTORE_PWD="changeit";
 
 function install() {
+	apt-get -y -qq install unzip default-jre tomcat7;
+	
 	ACCEPT_LICENSES=$(config-get accept_license);
 	juju-log "ACCEPT_LICENSES:$ACCEPT_LICENSES";
 	if [ "${ACCEPT_LICENSES}" != "True" ]; then
@@ -12,21 +18,40 @@ function install() {
 	cd $CHARM_DIR;
 	juju-log "Installing package unzip and tomcat7";
 
-	apt-get -y -qq install unzip default-jre tomcat7;
-	cp /var/lib/tomcat7/conf/server.xml /var/lib/tomcat7/conf/server.xml-org
-		if [ -f /var/lib/tomcat7/webapps/ROOT/index.html ]; then
-		rm /var/lib/tomcat7/webapps/ROOT/index.html
+	cp $TOMCAT_CONFIG_FILE $TOMCAT_CONFIG_FILE-org
+	if [ -f $TOMCAT_HOME/webapps/ROOT/index.html ]; then
+		rm $TOMCAT_HOME/webapps/ROOT/index.html
 	fi
 
-	echo "<html>" > /var/lib/tomcat7/webapps/ROOT/index.html
-	echo "<head>" >> /var/lib/tomcat7/webapps/ROOT/index.html
-	echo "<meta http-equiv=\"refresh\" content=\"0; url=/openam\" /> " >> /var/lib/tomcat7/webapps/ROOT/index.html
-	echo "</head>" >> /var/lib/tomcat7/webapps/ROOT/index.html
-	echo "</html>" >> /var/lib/tomcat7/webapps/ROOT/index.html
+cat << END > $TOMCAT_HOME/webapps/ROOT/index.html
+<html>
+<head>
+<script>
+var openam = "/openam";
+var protocol = location.protocol.replace(/:/g,'')
+var port = location.port;
+var host = location.hostname;
+var path = location.pathname;
+
+if (port == "8080" && path == "/") {
+     location="http://"+host+":"+port+openam;
+}
+if (port == "8443" && path == "/") {
+     location="https://"+host+":"+port+openam;
+}
+</script>
+</head>
+</html>
+END
 
 	wget -q $REPO_HOME/$OPENAM_WAR;
 	wget -q $REPO_HOME/$SSOADM_FILE;
 	wget -q $REPO_HOME/$CONFIGURATOR_FILE;
+
+	# To enable SSL, need to create a keystore and cert
+	JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
+	$JAVA_HOME/bin/keytool -genkey -noprompt -trustcacerts -keyalg RSA \
+		-alias tomcat -dname CN=CA -keypass $KEYSTORE_PWD -storepass $KEYSTORE_PWD -keystore $KEYSTORE
 }
 
 #
@@ -36,13 +61,6 @@ function install() {
 
 function setupAM() {
 #	 Need to invalidate any current relations since OpenAM will be reinstalled
-#    OPENDJ_ID=$(relation-ids datastore-dj);
-#    OPENDJ_UNIT_ID=$(relation-list -r $OPENDJ_ID);
-#    juju-log "IDS:$OPENDJ_ID";
-#    juju-log "UNIT_ID:$OPENDJ_UNIT_ID";
-#    relation-get -r $OPENDJ_ID - $OPENDJ_UNIT_ID;
-#    relation-set $OPENDJ_ID foo=bar;
-#    exit 0;
 
 	AMADMIN_PWD=$(config-get amadmin_password);
 	if [ -z "${AMADMIN_PWD}" ]; then
@@ -58,6 +76,7 @@ function setupAM() {
 	stop;
 	
 	HTTP_PORT=$(config-get http_port);
+	HTTPS_PORT=$(config-get https_port);
 	HOSTNAME_PUBLIC=$(unit-get public-address);
 	HOSTNAME_PRIVAT=$(unit-get private-address);
 	OPENAM_ADMIN="amadmin";
@@ -66,18 +85,35 @@ function setupAM() {
 		
 #	http_port
 	OLD_PORT=$(grep -i "Connector port=\"" /var/lib/tomcat7/conf/server.xml | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
-	juju-log "OLD_PORT:$OLD_PORT, HTTP_PORT:$HTTP_PORT";
-	if [ "$OLD_PORT" != "$HTTP_PORT" ]; then
-		close-port ${OLD_PORT};
-		# Remove references to prevously installations if present
-		cp /var/lib/tomcat7/conf/server.xml-org /var/lib/tomcat7/conf/server.xml
-		if [ ! "$HTTP_PORT" -eq 8080 ]; then
-			sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" /var/lib/tomcat7/conf/server.xml;
-		fi
-	fi
+	OLD_SSL_PORT=$(grep -i "Connector port=\"" /var/lib/tomcat7/conf/server.xml | grep "SSL" | grep -v "AJP" | cut -d'"' -f2);
+	close-port ${OLD_PORT};
+	close-port ${OLD_SSL_PORT};
+
+	cp $TOMCAT_CONFIG_FILE-org $TOMCAT_CONFIG_FILE
+
+	sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_CONFIG_FILE
+	sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
+
+	# HTTPS configuration of Tomcat/OpenAM as standalone
+	sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_CONFIG_FILE
+	sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
+	KEYSTORE_FILE_Q=$(echo $KEYSTORE | sed 's,/,\\/,g');
+	sed -i -e "s/sslProtocol=\"TLS\"/sslProtocol=\"TLS\" keystoreFile=\"$KEYSTORE_FILE_Q\" keystorePass=\"$KEYSTORE_PWD\"/g" $TOMCAT_CONFIG_FILE
+
+{
+ed -s $TOMCAT_CONFIG_FILE <<EOF
+/SSLEnabled="true"
+-1d
+/\/>
++1d
+wq
+EOF
+} &>/dev/null 
 
 	open-port ${HTTP_PORT};
+	open-port ${HTTPS_PORT};
 	juju-log "Opened port:$HTTP_PORT used by Tomcat/Openam.";
+	juju-log "Opened SSL port:$HTTPS_PORT used by Tomcat/Openam.";
 
 #	java_opts
 	JAVA_ARGS=$(config-get java_opts);

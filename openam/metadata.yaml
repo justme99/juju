@@ -14,31 +14,23 @@ provides:
   openidc-discovery:
     interface: openidc
     optional: true
-  openidc-provider:
-    interface: openidc
-    optional: true
-  saml-idp:
-     interface: saml2
-     optional: true
-  saml-sp:
-      interface: saml2
+#  openidc-provider:
+#    interface: openidc
+#    optional: true
   datastore-dj:
      interface: ldap-v3
      optional: true
-  datastore-ad:
-     interface: ldap-ad
-     optional: true
-requires:
-  db:
-    interface: mysql
-    optional: true
-  splunk:
-     interface: splunk-forwarder
-     optional: true
-  elasticsearch:
-     interface: elasticsearch-appender
-     optional: true
-peers:
-  site:
-    interface: http
-    optional: true
+#  datastore-ad:
+#     interface: ldap-ad
+#     optional: true
+#requires:
+#  splunk:
+#     interface: splunk-forwarder
+#     optional: true
+#  elasticsearch:
+#     interface: elasticsearch-appender
+#     optional: true
+#peers:
+#  site:
+#    interface: http
+#    optional: true

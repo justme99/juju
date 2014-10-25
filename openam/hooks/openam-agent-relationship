@@ -2,18 +2,12 @@
 . hooks/common
 
 function joined() {
-	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
+	juju-log "openam-agent-relation-joined on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
 	relation-set openam_url="http://$(unit-get public-address):$(config-get http_port)/openam";
-	bootstrap=$(</usr/share/tomcat7/openam/bootstrap);
-	relation-set bootstrap="$bootstrap";
-	juju-log "openam-agent-relation-joined from $JUJU_REMOTE_UNIT";
-	# Needed for remote SSSOADM
-	amadmin_pwd=$(config-get amadmin_password);
-	relation-set amadmin_pwd="$amadmin_pwd";
 }
 
 function departed() {
-	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
+	juju-log "openam-agent-relation-departed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
 	AGENT_NAME=$(relation-get agent_name);
 
     $SSOADM delete-agents --realm / \
@@ -23,7 +17,7 @@ function departed() {
 }
 
 function broken() {
-	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
+	juju-log "openam-agent-relation-broken on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
 }
 
 function changed() {
@@ -39,6 +33,7 @@ function changed() {
     fi
     AGENT_URL=$(relation-get agent_url);
     AGENT_NAME=$(relation-get agent_name);
+    AGENT_TYPE=$(relation-get agent_type);
 
 	$SSOADM create-agent --realm / \
     	--agentname $AGENT_NAME \

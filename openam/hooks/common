@@ -6,7 +6,8 @@ export OPENAM_WAR="OpenAM-12.0.0-SNAPSHOT.war";
 export CONFIGURATOR_FILE="SSOConfiguratorTools-12.0.0-SNAPSHOT.zip";
 export SSOADM_FILE="SSOAdminTools-12.0.0-SNAPSHOT.zip";
 
-export OPENAM_REALM="/"
+export OPENAM_REALM="/";
+export OPENAM_ADMIN="amadmin";
 export PWDFILE="$CHARM_DIR/ssoadm/pwd.txt";
 export SSOADM="$CHARM_DIR/ssoadm/openam/bin/ssoadm";
 export JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");

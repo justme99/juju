@@ -14,12 +14,12 @@ requires:
   datastore-dj:
      interface: ldap-v3
      optional: true
-  splunk:
-     interface: splunk-forwarder
-     optional: true
-  elasticsearch:
-     interface: elasticsearch-appender
-     optional: true
+#  splunk:
+#     interface: splunk-forwarder
+#     optional: true
+#  elasticsearch:
+#     interface: elasticsearch-appender
+#     optional: true
 peers:
   replication:
     interface: replication

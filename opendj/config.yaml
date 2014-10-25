@@ -1,29 +1,50 @@
 options:
+  accept_license:
+    default: false
+    description: |
+      This otions is mandatory.
+      .
+      You have to accept the OpenDJ license terms before installation can proceed.
+      The lisence terms can be found as part of the source in file named 'license.txt'.
+    type: boolean
   ldap_port:
     type: int
     default: 389
     description: LDAP port
   manager_password:
+    description: |
+      This options is Mandatory.
+      .
+      You have to provide a private OpenDJ 'Directory Manager' password before installation can proceed.
     type: string
-    default: secret12
-    description: OpenDJ 'Directory Manager' password.
+    value: null
   base_dn:
     type: string
     default: "dc=example,dc=com"
     description: OpenDJ 'Base DN'.
+  rest_enabled:
+    default: false
+    description: |
+      Enabling the RESTful API for OpenDJ.
+    type: boolean
   rest_port:
     type: int
     default: 8000
     description: RESTful API port.
-  auth_realm:
-    type: string
-    default: /opendj
-    description: The realm to be used when connected to OpenAM as a authentication store.
-  auth_name:
-    type: string
-    default: opendj
-    description: The name of the authentication store to be created when connected to OpenAM.
-  auth_type:
-    type: string
-    default: LDAPv3ForOpenDS
-    description: The type of the authentication store to be created when connected to OpenAM. For OpenDJ this is 'LDAPv3ForOpenDS'.
+  access_logging:
+    default: false
+    description: |
+      Enabling HTTP Access logging for OpenDJ.
+    type: boolean
+#  auth_realm:
+#    type: string
+#    default: /opendj
+#    description: The realm to be used when connected to OpenAM as a authentication store.
+#  auth_name:
+#    type: string
+#    default: opendj
+#    description: The name of the authentication store to be created when connected to OpenAM.
+#  auth_type:
+#    type: string
+#    default: LDAPv3ForOpenDS
+#    description: The type of the authentication store to be created when connected to OpenAM. For OpenDJ this is 'LDAPv3ForOpenDS'.
