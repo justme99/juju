@@ -1,7 +1,8 @@
-#!/bin/bash -x
+#!/bin/bash -ex
 
 OPENDJ_FILE="OpenDJ-2.6.1.zip";
-OPENDJ_HOME=/opt/opendj;
+#OPENDJ_HOME=/opt/opendj;
+OPENDJ_HOME=$CHARM_DIR/opendj;
 
 function install() {
 	LICENSE_ACCEPTED=$(config-get accept_license);
@@ -13,6 +14,13 @@ function install() {
 	REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
 	apt-get -y -qq install unzip default-jre;
 	wget -q $REPO_HOME/$OPENDJ_FILE;
+
+	SHA_0=$(<$CHARM_DIR/$OPENDJ_FILE.sha);
+	SHA_1=$(sha1sum $OPENDJ_FILE | cut -d' ' -f1);
+	if [ "$SHA_0" != "$SHA_1" ]; then
+		juju-log "Checksum error for $OPENDJ_FILE";
+		exit 1;
+	fi
 	wget -q $REPO_HOME/example-users.ldif.gz
 }
 
@@ -21,24 +29,25 @@ function setupDJ() {
 	# Configuration parameters
 	MANAGER_PWD=$(config-get manager_password);
 	if [ -z "${MANAGER_PWD}" ]; then
-		juju-log "OpenDJ manager password has to be set before been installed."
-		exit 1
+		juju-log "OpenDJ manager password has to be set before installation can continue!!.";
+		exit 1;
 	fi
 
 	BASE_DN=$(config-get base_dn);
 	LDAP_PORT=$(config-get ldap_port);
 	
 
-	if [ -d /opt/opendj ]; then
+	if [ -d $OPENDJ_HOME ]; then
 		juju-log "Stopping and removing existing OpenDJ installation."
 		$OPENDJ_HOME/bin/stop-ds --quiet;
-		rm -fr /opt/opendj
+		rm -fr $OPENDJ_HOME/;
 	fi
-	mkdir /opt/opendj;
-	juju-log "Created OpenDJ home in '$OPENDJ_HOME'."
 
-	unzip -qq $OPENDJ_FILE -d /opt
-	juju-log "OpenDJ archive '$CHARM_HOME/$FILE' is unpacked into $OPENDJ_HOME.";
+	mkdir $OPENDJ_HOME;
+	juju-log "Created OpenDJ home in '$OPENDJ_HOME'.";
+
+	unzip -qq $OPENDJ_FILE -d $CHARM_DIR;
+	juju-log "OpenDJ archive '$CHARM_DIR/$FILE' is unpacked into $OPENDJ_HOME.";
 
 	juju-log "Configuring OpenDJ....."
 	$OPENDJ_HOME/setup -i -n \
@@ -55,15 +64,17 @@ function setupDJ() {
 
     #
     # Importing sample users
-    #
+    # Unzip only first time
 	juju-log "Importing sample userdata.";
-	gunzip example-users.ldif.gz
+	if [ -f	example-users.ldif.gz ]; then
+		gunzip example-users.ldif.gz
+	fi
 	$OPENDJ_HOME/bin/import-ldif -l example-users.ldif -n userRoot &>/dev/null
 	#
 	# Open port and start OpenDJ deamon
 	#
     open-port $LDAP_PORT;
-    juju-log "Port $LDAP_PORT open for DLAP requests.";
+    juju-log "Port $LDAP_PORT open for LDAP requests.";
 	start;
 	#
 	# Enable the REST connection handler
@@ -108,9 +119,6 @@ function setupDJ() {
 }
 
 function start() {
-#	if [ ! -f "$OPENDJ_HOME/./locks/server.lock" ]; then
-#		$OPENDJ_HOME/bin/start-ds --quiet;
-#	fi
 	$OPENDJ_HOME/bin/start-ds --quiet;
 	juju-log "OpenDJ running.";
 }

@@ -57,7 +57,7 @@ Check out here: [Subscriptions](http://forgerock.com/products/subscriptions/).
 # Usage
 
 To be able to install OpenAM you have to accept the license term as outlined in the license file.
-You can either accept the license terms on the commmand line or by the checkboc in the Juju-gui.
+You can either accept the license terms on the commmand line or by the checkbox in the Juju-gui.
 
 In addition you have to set a "private" admin password for your deployment, either on the command or in th Juju-gui.
 
@@ -82,7 +82,7 @@ Many more relationships for both datastores and authentication services will be 
 
 ## Scale out Usage
 
-OpenAM itself is highly scalable using built-in a site configuration option and can be used behind load balancers. This release of OpenAM do soffurt it, but the autoscaling features supported by Juju is not currently mapped a OpenAM site configurations.
+OpenAM itself is highly scalable using built-in a site configuration option and can be used behind load balancers. This release of OpenAM do support it, but the autoscaling features supported by Juju is not currently mapped a OpenAM site configurations.
 
 ## Known Limitations and Issues
 
@@ -91,7 +91,7 @@ This release of OpenAM is meant for evaluation purposes only and will violate th
 Other limitations of this charm
 - Autoscaling is not supported in this charm release
 - Only OpenDJ is tested as a user repository for authenticate users
-- Only the Apache OpenAM Agent relastionship is cuurently supported. Currently no support for the .Net and J2EE.
+- Only the Apache OpenAM Agent relastionship is currently supported. Currently no support for the .Net and J2EE.
 - Only OpenID Connect is supported as a automatically way of authenticate users of any charm implementing the same interface 
 
 There will be more features and relationships to come.

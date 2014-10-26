@@ -1,15 +1,8 @@
 #!/bin/bash -ex
-AUTH_NAME="opendj";
 AUTH_TYPE="LDAPv3ForOpenDS";
-
-function changed() {
-	juju-log "datastore-dj-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-}
-
-function departed() {
-	juju-log "datastore-dj-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-	relation-set auth_name=$AUTH_NAME;
-}
+PUBLIC_HOSTNAME=$(unit-get public-address);
+HOSTNAME=$(echo $PUBLIC_HOSTNAME | cut -d'.' -f1);
+AUTH_NAME="opendj-$HOSTNAME";
 
 function joined() {
 	juju-log "datastore-dj-relation-joined invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
@@ -22,6 +15,14 @@ function joined() {
 	relation-set auth_type=$AUTH_TYPE;
 }
 
+function changed() {
+	juju-log "datastore-dj-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+function departed() {
+	juju-log "datastore-dj-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	relation-set auth_name=$AUTH_NAME;
+}
 
 function broken() {
 	juju-log "datastore-dj-relation-broken invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";

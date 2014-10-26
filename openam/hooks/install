@@ -5,17 +5,48 @@ export TOMCAT_HOME="/var/lib/tomcat7";
 export TOMCAT_CONFIG_FILE="$TOMCAT_HOME/conf/server.xml";
 export KEYSTORE="$TOMCAT_HOME/conf/keystore.jks";
 export KEYSTORE_PWD="changeit";
+export OPENAM_HOME="$CHARM_DIR/openam";
 
 function install() {
 	apt-get -y -qq install unzip default-jre tomcat7;
-	
+
 	ACCEPT_LICENSES=$(config-get accept_license);
 	juju-log "ACCEPT_LICENSES:$ACCEPT_LICENSES";
 	if [ "${ACCEPT_LICENSES}" != "True" ]; then
 		juju-log "License has to be accepted before installing."
 		exit 1
 	fi
+
 	cd $CHARM_DIR;
+
+	# Download WAR file
+	wget -q $REPO_HOME/$OPENAM_WAR;
+	SHA_0=$(<$CHARM_DIR/$OPENAM_WAR.sha);
+	SHA_1=$(sha1sum $OPENAM_WAR | cut -d' ' -f1);
+	if [ "$SHA_0" != "$SHA_1" ]; then
+		juju-log "Checksum error for $OPENAM_WAR";
+		exit 1;
+	fi
+
+	# Download SSOADM archive
+	wget -q $REPO_HOME/$SSOADM_FILE;
+	SHA_0=$(<$CHARM_DIR/$SSOADM_FILE.sha);
+	SHA_1=$(sha1sum $SSOADM_FILE | cut -d' ' -f1);
+	if [ "$SHA_0" != "$SHA_1" ]; then
+		juju-log "Checksum error for $SSOADM_FILE";
+		exit 1;
+	fi
+
+	# Download SSOCONFIGURATOR archive
+	wget -q $REPO_HOME/$CONFIGURATOR_FILE;
+
+	SHA_0=$(<$CHARM_DIR/$CONFIGURATOR_FILE.sha);
+	SHA_1=$(sha1sum $CONFIGURATOR_FILE | cut -d' ' -f1);
+	if [ "$SHA_0" != "$SHA_1" ]; then
+		juju-log "Checksum error for $CONFIGURATOR_FILE";
+		exit 1;
+	fi
+
 	juju-log "Installing package unzip and tomcat7";
 
 	cp $TOMCAT_CONFIG_FILE $TOMCAT_CONFIG_FILE-org
@@ -44,10 +75,6 @@ if (port == "8443" && path == "/") {
 </html>
 END
 
-	wget -q $REPO_HOME/$OPENAM_WAR;
-	wget -q $REPO_HOME/$SSOADM_FILE;
-	wget -q $REPO_HOME/$CONFIGURATOR_FILE;
-
 	# To enable SSL, need to create a keystore and cert
 	JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
 	$JAVA_HOME/bin/keytool -genkey -noprompt -trustcacerts -keyalg RSA \
@@ -58,47 +85,46 @@ END
 # If the config params Tomcat port or the JAVA_OPTS is the only changes, there
 # is no need to do a complete reinstall of OpenAM.
 #
-
 function setupAM() {
-#	 Need to invalidate any current relations since OpenAM will be reinstalled
+    # Need to invalidate any current relations since OpenAM will be reinstalled
 
-	AMADMIN_PWD=$(config-get amadmin_password);
-	if [ -z "${AMADMIN_PWD}" ]; then
+    AMADMIN_PWD=$(config-get amadmin_password);
+    if [ -z "${AMADMIN_PWD}" ]; then
 		juju-log "OpenAM amadmin password has to be set before installation can proceed."
 		exit 1
 	fi
-	if [ ${#AMADMIN_PWD} -lt 8 ]; then
+    if [ ${#AMADMIN_PWD} -lt 8 ]; then
 		juju-log "Administrator password must be atleast 8 characters."
 		exit 1
 	fi
 
-	tomcatObtainTomcatLock;
-	stop;
-	
-	HTTP_PORT=$(config-get http_port);
-	HTTPS_PORT=$(config-get https_port);
-	HOSTNAME_PUBLIC=$(unit-get public-address);
-	HOSTNAME_PRIVAT=$(unit-get private-address);
-	OPENAM_ADMIN="amadmin";
-	OPENAM_URL="http://$HOSTNAME_PUBLIC:$HTTP_PORT";
-	OPENAM_DEPLOYMENT_URI="/openam";
-		
-#	http_port
-	OLD_PORT=$(grep -i "Connector port=\"" /var/lib/tomcat7/conf/server.xml | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
-	OLD_SSL_PORT=$(grep -i "Connector port=\"" /var/lib/tomcat7/conf/server.xml | grep "SSL" | grep -v "AJP" | cut -d'"' -f2);
-	close-port ${OLD_PORT};
-	close-port ${OLD_SSL_PORT};
+    tomcatObtainTomcatLock;
+    stop;
+    
+    HTTP_PORT=$(config-get http_port);
+    HTTPS_PORT=$(config-get https_port);
+    HOSTNAME_PUBLIC=$(unit-get public-address);
+    HOSTNAME_PRIVAT=$(unit-get private-address);
+    OPENAM_ADMIN="amadmin";
+    OPENAM_URL="http://$HOSTNAME_PUBLIC:$HTTP_PORT";
+    OPENAM_DEPLOYMENT_URI="/openam";
+    
+    #http_port
+    OLD_PORT=$(grep -i "Connector port=\"" $TOMCAT_HOME/conf/server.xml | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
+    OLD_SSL_PORT=$(grep -i "Connector port=\"" $TOMCAT_HOME/conf/server.xml | grep "SSL" | grep -v "AJP" | cut -d'"' -f2);
+    close-port ${OLD_PORT};
+    close-port ${OLD_SSL_PORT};
 
-	cp $TOMCAT_CONFIG_FILE-org $TOMCAT_CONFIG_FILE
+    cp $TOMCAT_CONFIG_FILE-org $TOMCAT_CONFIG_FILE
 
-	sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_CONFIG_FILE
-	sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
+    sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_CONFIG_FILE
+    sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
 
-	# HTTPS configuration of Tomcat/OpenAM as standalone
-	sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_CONFIG_FILE
-	sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
-	KEYSTORE_FILE_Q=$(echo $KEYSTORE | sed 's,/,\\/,g');
-	sed -i -e "s/sslProtocol=\"TLS\"/sslProtocol=\"TLS\" keystoreFile=\"$KEYSTORE_FILE_Q\" keystorePass=\"$KEYSTORE_PWD\"/g" $TOMCAT_CONFIG_FILE
+    # HTTPS configuration of Tomcat/OpenAM as standalone
+    sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_CONFIG_FILE
+    sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
+    KEYSTORE_FILE_Q=$(echo $KEYSTORE | sed 's,/,\\/,g');
+    sed -i -e "s/sslProtocol=\"TLS\"/sslProtocol=\"TLS\" keystoreFile=\"$KEYSTORE_FILE_Q\" keystorePass=\"$KEYSTORE_PWD\"/g" $TOMCAT_CONFIG_FILE
 
 {
 ed -s $TOMCAT_CONFIG_FILE <<EOF
@@ -112,97 +138,93 @@ EOF
 
 	open-port ${HTTP_PORT};
 	open-port ${HTTPS_PORT};
-	juju-log "Opened port:$HTTP_PORT used by Tomcat/Openam.";
-	juju-log "Opened SSL port:$HTTPS_PORT used by Tomcat/Openam.";
+	juju-log "Opened default port:$HTTP_PORT and SSL port:$HTTPS_PORT used by Tomcat/Openam.";
 
-#	java_opts
+	#java_opts
 	JAVA_ARGS=$(config-get java_opts);
-	OLD_ARGS="";
-	# Could have been changed, then need to be recreated
+
 	# If file exists, OpenAM has been fully deployed earlier
 	if [ -f /usr/share/tomcat7/bin/setenv.sh ]; then
-		rm /usr/share/tomcat7/bin/setenv.sh
-		OLD_ARGS=$(</usr/share/tomcat7/bin/setenv.sh);
-		juju-log "OLD_ARGS:$OLD_ARGS, JAVA_ARGS:'JAVA_OPTS=\"$JAVA_ARGS\"'";
-		#if [ "$OLD_ARGS" != "JAVA_OPTS=\"$JAVA_ARGS\"" ]; then
-		#fi
-		echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
+    	rm /usr/share/tomcat7/bin/setenv.sh
 	fi
-	juju-log "OLD_ARGS:$OLD_ARGS, JAVA_ARGS:'JAVA_OPTS=\"$JAVA_ARGS\"'";
+
+	# Replace it anyway, tomcat will be restarted
+    echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
 	juju-log "JAVA_OPTS is set to: $JAVA_ARGS";
 
-# 	AMADMIN PWD
+	# AMADMIN PWD
 	OLD_PWD="";
 	if [ -f $PWDFILE ]; then
-		OLD_PWD=$(<$PWDFILE);
-	fi
+    	OLD_PWD=$(<$PWDFILE);
+    fi
 
 	juju-log "OLD_PWD:'$OLD_PWD', AMADMIN_PWD:'$AMADMIN_PWD'";
 	if [ ! -z "$OLD_PWD" -a "$OLD_PWD" == "$AMADMIN_PWD" ]; then
-		# Then there is no need to reinstall OpenAM, just restarting Tomcat with the new config
-		juju-log "PWD EQUAL, just restarting Tomcat, nothing more to do";
-		service tomcat7 restart;
-		return;
-	fi
-	
+    	# Then there is no need to reinstall OpenAM, just restarting Tomcat with the new config
+    	juju-log "PWD EQUAL, just restarting Tomcat, nothing more to do";
+    	service tomcat7 restart;
+    	exit 0;
+    fi
+
 	juju-log "AMADMIN password is different, need to reinstall";
 
 	if [ -d "/root/.openamcfg" ];then
-		rm -fr /root/.openamcfg;
-	fi
+    	rm -fr /root/.openamcfg;
+    fi
 
 	mkdir /root/.openamcfg;
+	
 	# Make sure the tomcat user can write to the "home" directory 
 	chown -R tomcat7 /root/.openamcfg;
 	juju-log "Created .openssocfg directory for OpenAM install check.";
 
 	if [ -d "/usr/share/tomcat7/openam" ];then
-		rm -fr /usr/share/tomcat7/openam;
-	fi
+    	rm -fr /usr/share/tomcat7/openam;
+    fi
 
 	mkdir /usr/share/tomcat7/openam;
     chown -R tomcat7 /usr/share/tomcat7;
-	juju-log "Created default OpenAM install directory in /usr/share/tomcat7/openam";
+    juju-log "Created default OpenAM install directory in /usr/share/tomcat7/openam";
 
-	if [ -d /var/lib/tomcat7/webapps/openam ];then
+    if [ -d $TOMCAT_HOME/webapps/openam ];then
 		juju-log "Undeploying war openam"
-		rm -fr /var/lib/tomcat7/webapps/openam;
-		rm -f /var/lib/tomcat7/webapps/openam.war;
+		rm -fr $TOMCAT_HOME/webapps/openam;
+		rm -f $TOMCAT_HOME/webapps/openam.war;
 	fi
 
-	unzip -qqo $OPENAM_WAR -d /var/lib/tomcat7/webapps/openam
-	chown -R tomcat7 /var/lib/tomcat7/webapps;
+    unzip -qqo $OPENAM_WAR -d $TOMCAT_HOME/webapps/openam
+    chown -R tomcat7 $TOMCAT_HOME/webapps;
 
-	start;
-	tomcatReleaseTomcatLock;
+    start;
+    tomcatReleaseTomcatLock;
 
-	#
-	# Have to wait until Tomcat has started and OpenAM id deployed
-	#
-	ALIVE=0
-	TRY=0
-	MAX=30
-	#
-	# Wait until ready before Tomcat is started and ready for service
-	#
-	until [ ! -z "$(curl --silent --show-error --connect-timeout 1 --max-time 5 -I http://localhost:$HTTP_PORT 2>/dev/null | grep 'Coyote')" ];
-	do
-		TRY=$[TRY+1];
-		if [ "$TRY" -eq "$MAX" ]; then
-			break;
-		fi
+    #
+    # Have to wait until Tomcat has started and OpenAM id deployed
+    #
+    ALIVE=0
+    TRY=0
+    MAX=30
+    #
+    # Wait until ready before Tomcat is started and ready for service
+    #
+    until [ ! -z "$(curl --silent --show-error --connect-timeout 1 --max-time 5 -I http://localhost:$HTTP_PORT 2>/dev/null | grep 'Coyote')" ];
+    do
+	TRY=$[TRY+1];
+	if [ "$TRY" -eq "$MAX" ]; then
+	    break;
+	    fi
         juju-log "Wait, Tomcat is restarting....."
         sleep 10
-        tail -n 1 /var/lib/tomcat7/logs/catalina.out
+        tail -n 1 $TOMCAT_HOME/logs/catalina.out
 	done
 
-	HOSTNAME=$(unit-get public-address);
-	DOMAIN=$(echo "$HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
-#	DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
+    HOSTNAME=$(unit-get public-address);
+    DOMAIN=$(echo "$HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
+    #DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
 
-	juju-log "Running configurator for fqdn '$HOSTNAME' with domain: '$DOMAIN'."
+    juju-log "Running configurator for fqdn '$HOSTNAME' with domain: '$DOMAIN'."
 
-	AMLDAPUSERPASSWD="pa$AMADMIN_PWD";
+    AMLDAPUSERPASSWD="pa$AMADMIN_PWD";
 
 cat << ENDCONFIG > config.conf
 SERVER_URL=http://$HOSTNAME:$HTTP_PORT
@@ -226,18 +248,19 @@ DS_DIRMGRDN=cn=Directory Manager
 DS_DIRMGRPASSWD=secret12
 ENDCONFIG
 
-if [ $OPENAM_RELEASE_N -ge 1200 ]; then
-    echo "ACCEPT_LICENSES=true" >> config.conf
-fi
+	if [ $OPENAM_RELEASE_N -ge 1200 ]; then
+    	echo "ACCEPT_LICENSES=true" >> config.conf
+	fi
 
-unzip -qqo $CONFIGURATOR_FILE;
-if [ ! -f "tool.jar" ]; then
-	ln -s openam-configurator-tool*.jar tool.jar;
-fi
-java -jar tool.jar -f ./config.conf;
+	unzip -qqo $CONFIGURATOR_FILE;
+	if [ ! -f "tool.jar" ]; then
+		ln -s openam-configurator-tool*.jar tool.jar;
+	fi
+	
+	java -jar tool.jar -f ./config.conf;
 
-service tomcat7 restart;
-juju-log "OpenAM configurator completed.";
+	service tomcat7 restart;
+	juju-log "OpenAM configurator completed.";
 }
 
 function install-ssoadm() {
@@ -263,7 +286,7 @@ function install-ssoadm() {
 		fi
 		juju-log "Wait, Tomcat is restarting.....";
 		sleep 10;
-		tail -n 1 /var/lib/tomcat7/logs/catalina.out;
+		tail -n 1 "$TOMCAT_HOME/logs/catalina.out";
 	done
 
 	#
@@ -272,7 +295,7 @@ function install-ssoadm() {
 	unzip -qqo ../$SSOADM_FILE;
 	#
 	if [ -f "/usr/share/tomcat7/openam/bootstrap" ]; then
-		juju-log "Installing SSOADM in '$CHARRM_DIR/ssoadm'."
+		juju-log "Installing SSOADM in '$CHARM_DIR/ssoadm'."
 		chmod 755 /usr/share/tomcat7/openam/bootstrap;
 		if [ $OPENAM_RELEASE_N -gt 1102 ]; then
 			./setup --acceptLicense --path /usr/share/tomcat7/openam -d $CHARM_DIR/ssoadm/ssoadm-debug -l $CHARM_DIR/ssoadm/ssoadm-log;
