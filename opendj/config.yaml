@@ -7,10 +7,6 @@ options:
       You have to accept the OpenDJ license terms before installation can proceed.
       The lisence terms can be found as part of the source in file named 'license.txt'.
     type: boolean
-  ldap_port:
-    type: int
-    default: 389
-    description: LDAP port
   manager_password:
     description: |
       This options is Mandatory.
@@ -18,6 +14,10 @@ options:
       You have to provide a private OpenDJ 'Directory Manager' password before installation can proceed.
     type: string
     value: null
+  ldap_port:
+    type: int
+    default: 389
+    description: LDAP port
   base_dn:
     type: string
     default: "dc=example,dc=com"

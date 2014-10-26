@@ -51,7 +51,7 @@ Can be found available online here:
 
 ##Subscription
 
-ForgeRock can offer a subscription for those who want to use ForgeRock OpenAM for production.
+ForgeRock can offer a subscription for those who want to use ForgeRock products for production.
 Check out here: [Subscriptions](http://forgerock.com/products/subscriptions/).
 
 # Usage
@@ -66,7 +66,19 @@ Step by step instructions on using the charm:
     juju deploy openam --constraints="mem=4G arch=amd64"
 	juju set openam accept_license='true' amadmin_password='cangetin'
 
-The instance running OpenAM needs at least 4GB RAM. 
+The instance running OpenAM needs at least 4GB RAM.
+
+This relase of the OpenAM charm supports a Juju relationship to ForgeRock OpenDJ. OpenDJ is a LDAP directory server which in most cases are used as user repositories. OpenDJ comes with some sample users which can be added to the default authentication chain in OpenAM to test and verify how easy such a integration can be done. You can verify the users in the OpenAM web console in the following location both with and without a relationship:
+
+- 'Access Control' -> '/ (Top Level Realm)' -> 'Subjects'
+
+The datastore itself is created in 
+
+- 'Access Control' -> '/ (Top Level Realm)' -> 'Data stores'
+
+and named 'opendj'.
+
+Many more relationships for both datastores and authentication services will be added in the future. Any contribution are welcome.
 
 ## Scale out Usage
 
@@ -74,15 +86,15 @@ OpenAM itself is highly scalable using built-in a site configuration option and 
 
 ## Known Limitations and Issues
 
-This release of OpenAM is meant for evaluation purposes only and will will violate the license terms if used in a production environment. There is no limitation in features in the product, only in which context it's used.
+This release of OpenAM is meant for evaluation purposes only and will violate the license terms if used in a production environment. There is no limitation in features of the product.
 
 Other limitations of this charm
-- Autoscaling is not supported in this charm relaese
+- Autoscaling is not supported in this charm release
 - Only OpenDJ is tested as a user repository for authenticate users
 - Only the Apache OpenAM Agent relastionship is cuurently supported. Currently no support for the .Net and J2EE.
 - Only OpenID Connect is supported as a automatically way of authenticate users of any charm implementing the same interface 
 
-There will be more to come.
+There will be more features and relationships to come.
 # Configuration
 
 In addition to the license agreement and the admin password you can change or set the following configuration options.
