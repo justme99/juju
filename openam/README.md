@@ -15,7 +15,6 @@ The Open Identity Stack includes the following main products:
 
 - OpenIDM is the only 100% open source, lightweight, user administration and provisioning solution purpose-built for Internet scale. It’s easy to embed and deploy, with a small footprint and out-of-the-box REST interfaces that use standard Java development tools. OpenIDM uses the Open Identity Connectors Framework and Toolkit (OpenICF) to aid development of resource connectors. 
 
-
 ##ForgeRock OpenAM
 
 ForgeRock OpenAM was designed in response to a milieu of access management suites that were pieced together through acquisitions, creating an accidental architecture that complicates deployment and passes integration costs on to customers. Based on the Sun OpenSSO codebase, OpenAM is an “All-In-One” access management platform for protecting any type of resource across enterprise, cloud, social, and mobile environments. What has traditionally been delivered by legacy identity vendors as six different products — SSO, adaptive authentication, strong authentication, federation, web services security, and ﬁne-grained entitlements — is delivered as a single, uniﬁed offering. Organizations can use the access control services they need and simply “turn on” additional services when ready.
@@ -45,17 +44,15 @@ The session persistence repository is based on the bundled OpenDJ LDAP server. R
 ##Futher documentation 
 
 Can be found available online here:
-- [Documentation home:](http://docs.forgerock.org)
-- [Release note:](http://docs.forgerock.org/en/openam/latest/release-notes/index/index.html)
-- [Installation guide:](http://docs.forgerock.org/en/openam/latest/install-guide/index/index.html)
-- [Administration guide:](http://docs.forgerock.org/en/openam/latest/admin-guide/index/index.html)
-
+- [Documentation home](http://docs.forgerock.org)
+- [Release note](http://docs.forgerock.org/en/openam/latest/release-notes/index/index.html)
+- [Installation guide](http://docs.forgerock.org/en/openam/latest/install-guide/index/index.html)
+- [Administration guide](http://docs.forgerock.org/en/openam/latest/admin-guide/index/index.html)
 
 ##Subscription
 
 ForgeRock can offer a subscription for those who want to use ForgeRock OpenAM for production.
 Check out here: [Subscriptions](http://forgerock.com/products/subscriptions/).
-
 
 # Usage
 
@@ -86,7 +83,6 @@ Other limitations of this charm
 - Only OpenID Connect is supported as a automatically way of authenticate users of any charm implementing the same interface 
 
 There will be more to come.
-
 # Configuration
 
 In addition to the license agreement and the admin password you can change or set the following configuration options.
@@ -97,12 +93,12 @@ OpenAM uses the default Tomcat7 as it's java container for deployment. Default p
 -  https_port, defaults to 8443
 -  java_opts, defaults to '-Xmx1024m -XX:MaxPermSize=256m'
 
-You can then browse to http://ip-address:8080 to further configure OpenAM. Default admin user is "amadmin" and password is the one defined on deployment.
+You can then browse to http://ip-address:8080 or https://ip-address:8443 to further configure OpenAM. Default admin user is "amadmin" and password is the one defined on deployment.
 
 # Contact Information
 
 Stein Myrseth <stein.myrseth@forgerock.com>
 
 ## ForgeRock
-[ForgeRock Homepage](http://forgerock.com)
-[ForgeRock Community](http://forgerock.org)
+- [ForgeRock Homepage](http://forgerock.com)
+- [ForgeRock Community](http://forgerock.org)
