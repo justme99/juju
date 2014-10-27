@@ -34,6 +34,7 @@ EOF
 
 	close-port 443
 	open-port 80
+	service apache2 reload
 }
 
 function configure() {
