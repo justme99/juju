@@ -26,6 +26,7 @@ function changed() {
 
 	HOSTNAME_PUBLIC=$(unit-get public-address);
     DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
+    
 
     APACHE_PORT=$(relation-get apache_port);
     if [ -z "$APACHE_PORT" ]; then

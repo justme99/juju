@@ -71,6 +71,8 @@ Step by step instructions on using the charm:
     juju deploy opendj
     juju set opendj accept_license='true' manager_password='secret'
 
+By default OpenDJ exposes a fully compliant LDAPv3 service on the standard port defined (389). When exposing this port OpenDJ can be used as a standard LDAPv3 service. 
+
 This OpenDJ charm supports a relationship to OpenAM to be added as a user data store. The deployment of this OpenDJ charm includes some sample users, all users can be found in the subject listings in OpenAM after the relationship is establish in the web console at the following place. These sample OpenDJ users will be added after a successful relationship is established in the default authentication chain in OpenAM. You can verify the users in the OpenAM web console in the following location both with and without a relationship:
 
 - 'Access Control' -> '/ (Top Level Realm)' -> 'Subjects'
@@ -79,7 +81,7 @@ The datastore itself is created in
 
 - 'Access Control' -> '/ (Top Level Realm)' -> 'Data stores'
 
-and named 'opendj'.
+and named 'opendj' with the hostname of the OpenDJ instance added to it. 
 
 
 Many more relationships for both datastores and authentication services will be added in the future. Any contribution are welcome.

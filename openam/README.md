@@ -88,6 +88,8 @@ OpenAM itself is highly scalable using built-in a site configuration option and 
 
 This release of OpenAM is meant for evaluation purposes only and will violate the license terms if used in a production environment. There is no limitation in features of the product.
 
+The 'unit-get public-address' call in Juju install hook needs to return a Fully Qualified Domain Name (FQDN), just an IP address will abort the installation.
+
 Other limitations of this charm
 - Autoscaling is not supported in this charm release
 - Only OpenDJ is tested as a user repository for authenticate users

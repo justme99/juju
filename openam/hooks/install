@@ -97,13 +97,18 @@ function setupAM() {
 		juju-log "Administrator password must be atleast 8 characters."
 		exit 1
 	fi
-
+	
+	HOSTNAME_PUBLIC=$(unit-get public-address);
+	if [ -z $(echo $HOSTNAME_PUBLIC | sed 's/\.//g' | sed 's/[0-9]//g') ]; then
+		juju-log "OpenAM need a FQDN to be resolved from the 'unit-get public-address'. Can not use pure IP: $PUBLIC_HOSTNAME";
+		exit 1;
+	fi
     tomcatObtainTomcatLock;
     stop;
     
     HTTP_PORT=$(config-get http_port);
     HTTPS_PORT=$(config-get https_port);
-    HOSTNAME_PUBLIC=$(unit-get public-address);
+    
     HOSTNAME_PRIVAT=$(unit-get private-address);
     OPENAM_ADMIN="amadmin";
     OPENAM_URL="http://$HOSTNAME_PUBLIC:$HTTP_PORT";
@@ -218,16 +223,15 @@ EOF
         tail -n 1 $TOMCAT_HOME/logs/catalina.out
 	done
 
-    HOSTNAME=$(unit-get public-address);
-    DOMAIN=$(echo "$HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
+    DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
     #DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
 
-    juju-log "Running configurator for fqdn '$HOSTNAME' with domain: '$DOMAIN'."
+    juju-log "Running configurator for fqdn '$HOSTNAME_PUBLIC' with domain: '$DOMAIN'."
 
     AMLDAPUSERPASSWD="pa$AMADMIN_PWD";
 
 cat << ENDCONFIG > config.conf
-SERVER_URL=http://$HOSTNAME:$HTTP_PORT
+SERVER_URL=http://$HOSTNAME_PUBLIC:$HTTP_PORT
 DEPLOYMENT_URI=/openam
 BASE_DIR=/usr/share/tomcat7/openam
 locale=en_US
