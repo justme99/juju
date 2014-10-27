@@ -119,7 +119,7 @@ function setupDJ() {
 }
 
 function start() {
-	$OPENDJ_HOME/bin/start-ds --quiet;
+	$OPENDJ_HOME/bin/start-ds --quiet || true;
 	juju-log "OpenDJ running.";
 }
 
