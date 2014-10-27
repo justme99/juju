@@ -1,0 +1,67 @@
+#!/bin/bash
+
+. hooks/common
+
+#export APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
+
+function install() {
+	apt-get -y -qq install unzip default-jre apache2 php5;
+	sudo a2enmod include;
+	sudo a2enmod php5;
+	wget -q $REPO_HOME/$AGENT_FILE;
+
+	mkdir -p /var/www/irm
+	cp -r $CHARM_DIR/irmsite/* /var/www/irm/
+	chown -R www-data /var/www/irm
+
+cat << EOF > /etc/apache2/sites-available/default.conf
+<VirtualHost *:80>
+        DocumentRoot /var/www/irm
+        <Directory />
+                Options Indexes FollowSymLinks MultiViews
+                AllowOverride None
+                Order allow,deny
+                allow from all
+        </Directory>
+</VirtualHost>
+EOF
+
+	a2dissite 000-default.conf
+	a2ensite default
+
+	touch /etc/apache2/httpd.conf
+	echo "include /etc/apache2/httpd.conf" >> /etc/apache2/apache2.conf
+
+	close-port 443
+	open-port 80
+}
+
+function configure() {
+	juju-log "Configure, nothing to do.";
+}
+
+function start() {
+	service apache2 start;
+	juju-log "Apache started.";
+}
+
+function stop() {
+	service apache2 stop;
+	juju-log "Apache stopped.";
+}
+
+cmd=$(basename "$0")
+case "$cmd" in
+	config-changed | upgrade-charm)
+        configure;
+        ;;
+	install)
+        install;
+        ;;
+    start)
+		start;
+		;;
+	stop)
+		stop;
+		;;
+esac

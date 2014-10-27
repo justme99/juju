@@ -1,0 +1,11 @@
+name: sample-openidc
+summary: ForgeRock - A sample Open Identity Connect client
+maintainer: Stein Myrseth <stein.myrseth@forgerock.com>
+description: |
+  <Multi-line description here>
+categories:
+  - misc
+subordinate: false
+requires:
+  openidc-client:
+    interface: openidc

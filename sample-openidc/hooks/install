@@ -1,0 +1,67 @@
+#!/bin/bash
+
+. hooks/common
+
+function install() {
+	apt-get -y -qq install apache2 php5 libjansson4;
+	apt-get -f -y -qq install;
+	sudo a2enmod include;
+	sudo a2enmod php5;
+	wget -q $REPO_HOME/$OIDC_MODULE;
+	dpkg -i $OIDC_MODULE;
+
+	mkdir -p /var/www/oidc
+	cp -r $CHARM_DIR/oidc/* /var/www/oidc/
+	chown -R www-data /var/www/oidc
+
+cat << EOF >> $DEFAULT_CONF_FILE;
+<VirtualHost *:80>
+        DocumentRoot $DOCROOT
+        <Directory />
+                Options Indexes FollowSymLinks MultiViews
+                AllowOverride None
+                Order allow,deny
+                allow from all
+        </Directory>
+</VirtualHost>
+EOF
+	a2dissite 000-default
+	a2ensite default
+	a2enmod ssl
+	service apache2 reload
+	open-port 80
+	sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout $SSL_KEY_FILE \
+		-out $SSL_CERT_FILE \
+		-subj "/C=US/ST=MyStreet/L=Hometown/O=Home/CN=$(unit-get public-address)"
+}
+
+function configure() {
+	juju-log "CONFIGURE???";
+}
+
+function start() {
+	service apache2 start;
+	juju-log "Apache started";
+}
+
+function stop() {
+	service apache2 stop;
+	juju-log "Apache stopped";
+}
+
+cmd=$(basename "$0")
+case "$cmd" in
+	config-changed | upgrade-charm)
+        configure;
+        ;;
+	install)
+        install;
+        ;;
+    start)
+		start;
+		;;
+	stop)
+		stop;
+		;;
+esac

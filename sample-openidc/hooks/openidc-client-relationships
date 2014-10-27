@@ -1,0 +1,113 @@
+#!/bin/bash -ex
+. hooks/common
+
+export AGENT_NAME="OIDCAgent";
+export AGENT_TYPE="OAuth2Client";
+
+function joined() {
+    juju-log "openidc-client-relation-joined on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+    AGENT_URL="https://$(unit-get public-address)/secret";
+    juju-log "AGENT_URL:$AGENT_URL";
+    relation-set agent_url="$AGENT_URL";
+    relation-set agent_name="$AGENT_NAME";
+    relation-set agent_type="$AGENT_TYPE";
+}
+
+function changed() {
+        juju-log "openidc-client-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+
+        OPENAM_URL=$(relation-get openam_url);
+        juju-log "$OPENAM_URL:'$OPENAM_URL'";
+        if  [ -z "$OPENAM_URL" ]; then
+            return;
+        fi
+        CLIENT_SECRET=$(relation-get client_secret);
+
+        echo "$openam_url/UI/Logout" > /var/www/oidc/logout.txt
+
+        HOSTNAME_PUBLIC=$(unit-get public-address);
+        DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
+        #DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
+        HOSTNAME_PRIVATE=$(unit-get private-address);
+
+        APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
+
+cat << EOF > $OIDC_CONF_FILE;
+#Listen 443
+
+<VirtualHost *:443>
+SSLEngine on
+SSLCertificateFile $SSL_CERT_FILE
+SSLCertificateKeyFile $SSL_KEY_FILE
+
+#Session On
+#SessionCookieName session path=/
+
+ServerName $HOSTNAME_PUBLIC
+ErrorLog /var/log/apache2/oidc-error_log
+CustomLog /var/log/apache2/oidc-access_log common
+DocumentRoot $DOCROOT
+
+LogLevel trace8
+
+OIDCProviderIssuer $OPENAM_URL
+OIDCProviderAuthorizationEndpoint $OPENAM_URL/oauth2/authorize
+OIDCProviderTokenEndpoint $OPENAM_URL/oauth2/access_token
+OIDCProviderTokenEndpointAuth client_secret_post
+OIDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/tokeninfo
+OIDCClientID OIDCAgent
+OIDCClientSecret $CLIENT_SECRET
+OIDCDiscoverURL $OPENAM_URL/.well-known/openid-configuration
+OIDCRedirectURI https://$HOSTNAME_PUBLIC/secret
+
+OIDCCryptoPassphrase password2
+OIDCScope "openid email profile"
+
+<Location />
+    DirectoryIndex index.php
+    Authtype openid-connect
+    require valid-user
+</Location>
+</VirtualHost>
+EOF
+
+    # Restart Apache HTTPD deamon
+    a2dissite default;
+    a2enmod auth_openidc;
+    a2ensite oidc;
+    service apache2 restart;
+    open-port 443;
+    juju-log "done."
+}
+
+function departed() {
+	juju-log "openidc-client-relation-departed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+    relation-set agent_name="$AGENT_NAME";
+}
+
+function broken() {
+	juju-log "openidc-client-relation-broken on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+    # Enabling the new default initial config
+    a2dissite oidc;
+    a2dismod auth_openidc;
+    a2ensite default;
+    close-port 443;
+    service apache2 restart;
+}
+
+cmd=$(basename "$0");
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	openidc-client-relation-changed)
+        changed;
+        ;;
+	openidc-client-relation-departed)
+        departed;
+        ;;
+    openidc-client-relation-joined)
+		joined;
+	;;
+	openidc-client-relation-broken)
+		broken;
+	;;
+esac
