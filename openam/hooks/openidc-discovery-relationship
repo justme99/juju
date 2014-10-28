@@ -10,8 +10,8 @@ function joined() {
 
 function changed() {
 	juju-log "openidc-discover-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-	AGENT_URL=$(relation-get agent_url);
-    if [ -z "$AGENT_URL" ]; then
+	REDIRECT_URI=$(relation-get redirect_uri);
+    if [ -z "$REDIRECT_URI" ]; then
     	return;
     fi
     AGENT_NAME=$(relation-get agent_name);
@@ -83,7 +83,7 @@ create-agent \
 	"com.forgerock.openam.oauth2provider.responseTypes[6]=code token id_token" \
 	"com.forgerock.openam.oauth2provider.description[0]=" \
 	"com.forgerock.openam.oauth2provider.contacts[0]=" \
-  	"com.forgerock.openam.oauth2provider.redirectionURIs[0]=$AGENT_URL" \
+  	"com.forgerock.openam.oauth2provider.redirectionURIs[0]=$REDIRECT_URI" \
 	"sunIdentityServerDeviceStatus=Active" \
 	"userpassword=$CLIENT_SECRET" \
 	"com.forgerock.openam.oauth2provider.defaultScopes[0]=" \

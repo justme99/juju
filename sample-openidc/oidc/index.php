@@ -33,7 +33,7 @@ div.box1 {
 	color: #ffffff;
 	font-size: 1.5rem;
 	background-color: #2D3437;
-	width:500px;
+	width:600px;
 	min-height: 10em;
 	padding:10px;
 	border:5px solid gray;
@@ -48,25 +48,35 @@ th,td {
 </STYLE>
 </head>
 <body>
-<h1 style="margin-top: 5%;">Identity Relationship<br>Management Summit</h1>
-<h4 class="lowercase">June 3 - 5, 2014<br>
-				Phoenix, Arizona</h4>
+<h1 style="margin-top: 5%;">ForgeRock OpenAM<br>demo</h1>
+<h4 class="lowercase">OpenID Connect</h4>
 
 <div class="box1">
 <br/>
-<div style="text-align:center; font-size:1.8rem;">Welcome to the Summit</div>
+<div style="text-align:center; font-size:1.8rem;">Welcome...</div>
 </br>
 <table border="0" cellspacing="5">
 <?php
 $headers = apache_request_headers();
-$fullName = $headers['cn'];
 
-if(!empty($fullName)){
-        echo "<tr><td>Full name:</td><td>" . $fullName . "</td></tr>";
-        echo "<tr><td>telephoneNumber:</td><td>" . $headers['telephoneNumber'] . "</td></tr>";
+//print_r($headers);
+
+$familyName = $headers['OIDC_CLAIM_name'];
+
+if(!empty($familyName)){
+        $logout = $headers['OIDC_CLAIM_iss'];
+        $idtoken = $headers['OIDC_CLAIM_at_hash'];
+        foreach ($headers as $header => $value) {
+//              echo "$header --> $value <br />\n";
+                if(substr($header, 0, 10)=="OIDC_CLAIM") {
+                        $key = substr($header, 11);
+                        echo "<tr><td>$key:</td><td>$value</td></tr>";
+                }
+        }
         echo "<tr><td colspan='2'><div style=\"text-align:center;\"><form method=post action=";
-        include("logout.txt");
+        echo "$logout/oauth2/connect/endSession?id_token=$idtoken";
         echo "><button type=submit name=logout>Logout</button></td></tr>";
+	echo "<tr><td colspan=2>$logout/oauth2/connect/endSession?id_token=$idtoken</td></tr>";
 } else {
         echo "<tr><td colspan='2'>I don't know who you are !!!</td></tr>";
 }

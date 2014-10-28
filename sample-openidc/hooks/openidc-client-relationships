@@ -1,14 +1,14 @@
 #!/bin/bash -ex
 . hooks/common
 
-export AGENT_NAME="OIDCAgent";
-export AGENT_TYPE="OAuth2Client";
+AGENT_NAME="OIDCAgent";
+AGENT_TYPE="OAuth2Client";
+REDIRECT_URI="https://$(unit-get public-address)/secret";
 
 function joined() {
     juju-log "openidc-client-relation-joined on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-    AGENT_URL="https://$(unit-get public-address)/secret";
-    juju-log "AGENT_URL:$AGENT_URL";
-    relation-set agent_url="$AGENT_URL";
+    juju-log "REDIRECT_URI:$REDIRECT_URI";
+    relation-set redirect_uri="$REDIRECT_URI";
     relation-set agent_name="$AGENT_NAME";
     relation-set agent_type="$AGENT_TYPE";
 }
@@ -22,20 +22,10 @@ function changed() {
             return;
         fi
         CLIENT_SECRET=$(relation-get client_secret);
-
-        echo "$openam_url/UI/Logout" > /var/www/oidc/logout.txt
-
         HOSTNAME_PUBLIC=$(unit-get public-address);
-        DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
-        #DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
-        HOSTNAME_PRIVATE=$(unit-get private-address);
-
-        APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
 
 cat << EOF > $OIDC_CONF_FILE;
-#Listen 443
-
-<VirtualHost *:443>
+    <VirtualHost *:443>
 SSLEngine on
 SSLCertificateFile $SSL_CERT_FILE
 SSLCertificateKeyFile $SSL_KEY_FILE
@@ -54,11 +44,14 @@ OIDCProviderIssuer $OPENAM_URL
 OIDCProviderAuthorizationEndpoint $OPENAM_URL/oauth2/authorize
 OIDCProviderTokenEndpoint $OPENAM_URL/oauth2/access_token
 OIDCProviderTokenEndpointAuth client_secret_post
-OIDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/tokeninfo
+OIDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/userinfo
 OIDCClientID OIDCAgent
 OIDCClientSecret $CLIENT_SECRET
 OIDCDiscoverURL $OPENAM_URL/.well-known/openid-configuration
-OIDCRedirectURI https://$HOSTNAME_PUBLIC/secret
+OIDCRedirectURI $REDIRECT_URI
+
+OIDCSSLValidateServer Off
+OIDCOAuthSSLValidateServer Off
 
 OIDCCryptoPassphrase password2
 OIDCScope "openid email profile"
