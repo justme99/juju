@@ -50,9 +50,9 @@ OpenDJ provides data access through multiple protocols: REST, LDAP, and Web Serv
 
 Can be found available online here:
 - [Documentation home](http://docs.forgerock.org)
-- [Release note](http://docs.forgerock.org/en/opendj/latest/release-notes/index/index.html)
-- [Installation guide](http://docs.forgerock.org/en/opendj/latest/install-guide/index/index.html)
-- [Administration guide](http://docs.forgerock.org/en/opendj/latest/admin-guide/index/index.html)
+- [Release note](http://docs.forgerock.org/en/opendj/2.6.1/release-notes/index/index.html)
+- [Installation guide](http://docs.forgerock.org/en/opendj/2.6.0/install-guide/index/index.html)
+- [Administration guide](http://docs.forgerock.org/en/opendj/2.6.0/admin-guide/index/index.html)
 
 ##Subscription
 
@@ -61,7 +61,7 @@ Check out here: [Subscriptions](http://forgerock.com/products/subscriptions/).
 
 # Usage
 
-To be able to install OpenAM you have to accept the license term as outlined in the license file.
+To be able to install OpenDJ you have to accept the license term as outlined in the license file.
 You can either accept the license terms on the commmand line or by the checkboc in the Juju-gui.
 
 In addition you have to set a "private" admin password for your deployment, either on the command or in th Juju-gui.
@@ -91,18 +91,18 @@ Many more relationships for both datastores and authentication services will be 
 
 ## Scale out Usage
 
-OpenDJ supports many different topologies for HA. This charm has support for a multimaster configuration setup, when adding more instances to a deployment. The current release of this charm need to test this feature some further.
+OpenDJ supports many different topologies for HA. This charm has support for a multimaster configuration setup, when adding more instances to a deployment. The current release of this charm needs further testing of this feature.
 
 ## Known Limitations and Issues
 
 This release of OpenDJ is meant for evaluation purposes only and will violate the license terms if used in a production environment. There is no limitation in features of the product.
 
 Other limitations of this charm
-- Autoscaling need to be improved
+- Autoscaling currently works but could be improved
 
 # Configuration
 
-In addition to the license agreement and the 'Directory Manager' password you can change or set the following configuration options.
+In addition to the license agreement and the 'Directory Manager' password, you can change or set the following configuration options:
 
 -  ldap_port, defaults to 389
 -  base_dn, defaults to 'dc=example,dc=com'
@@ -110,10 +110,9 @@ In addition to the license agreement and the 'Directory Manager' password you ca
 -  rest_port, defaults to 8080
 -  access_logging, defaults to 'false'
 
-If 'rest_enabled' is turned on, the default port is set to 8080. The full documentation on the RESTful API support in OpenDJ is found online here: [OpenDJ - Performing RESTful Operations](http://docs.forgerock.org/en/opendj/latest/admin-guide/index/chap-rest-operations.html).
+You should then be able to bind to OpenDJ on default port 389 with any applications or a directory browser like ['Apache Directory Studio'](http://directory.apache.org/studio/) etc.
 
-Yoou should then be able to bind to OpenDJ on default port 389 with any applications or a directory browser like ['Apache Directory Studio'](http://directory.apache.org/studio/) etc.
-
+If 'rest_enabled' is turned on, the default port is set to 8080. The full documentation on the RESTful API support in OpenDJ is found online here: [OpenDJ - Performing RESTful Operations](http://docs.forgerock.org/en/opendj/2.6.0/admin-guide/index/chap-rest-operations.html).
 
 # Contact Information
 
