@@ -11,9 +11,13 @@ provides:
   openam-agent:
     interface: openam-agent
     optional: true
+    sets: [openam_url]
+    gets: [apache_port, agent_url, agent_name, agent_type]
   openidc-discovery:
     interface: openidc
     optional: true
+    sets: [openam_url]
+    gets: [agent_url, agent_name, agent_type]
 #  openidc-provider:
 #    interface: openidc
 #    optional: true

@@ -9,3 +9,5 @@ subordinate: false
 requires:
   openidc-client:
     interface: openidc
+    gets: [openam_url]
+    sets: [agent_url, agent_name, agent_type]

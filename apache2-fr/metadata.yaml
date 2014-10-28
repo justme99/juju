@@ -1,5 +1,5 @@
 name: apache2-fr
-summary: Apache HTTP Server for ForgeRock
+summary: Apache HTTP Server for ForgeRock OpenAM Web agent
 maintainer: Stein Myrseth <stein.myrseth@forgerock.com>
 description: |
   The Apache Software Foundation's goal is to build a secure, efficient
@@ -10,12 +10,6 @@ description: |
   filtering, many flexible authentication schemes, and more.
 categories: ["app-servers"]
 provides:
-  nrpe-external-master:
-    interface: nrpe-external-master
-    scope: container
-  local-monitors:
-    interface: local-monitors
-    scope: container
   website:
     interface: http
   splunk:
@@ -23,13 +17,7 @@ provides:
   elasticsearch:
      interface: elasticsearch-appender
 requires:
-  reverseproxy:
-    interface: http
-  website-cache:
-    interface: http
-  balancer:
-    interface: http
-  logging:
-    interface: syslog
-  openam-agent:
+   openam-agent:
     interface: openam-agent
+    gets: [openam_url]
+    sets: [apache_port, agent_url, agent_name, agent_type]
