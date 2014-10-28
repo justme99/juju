@@ -252,7 +252,7 @@ DS_DIRMGRDN=cn=Directory Manager
 DS_DIRMGRPASSWD=secret12
 ENDCONFIG
 
-	if [ $OPENAM_RELEASE_N -ge 1200 ]; then
+	if [ $OPENAM_RELEASE_N -ge 1102 ]; then
     	echo "ACCEPT_LICENSES=true" >> config.conf
 	fi
 
@@ -310,11 +310,12 @@ function install-ssoadm() {
 	else
 		juju-log --log-level ERROR "OpenAM bootstrap not found !!!!"
 	fi
+	juju-log "done."
 }
 
 function tomcatObtainTomcatLock() {
 	(umask 0077; touch /etc/tomcat7/tomcat.lock)
-	exec 9> /etc/tomcat7/tomcat.lock; flock 9
+	exec 9> /etc/tomcat7/tomcat.lock; flock 9;
 }
 
 function tomcatReleaseTomcatLock() {
@@ -331,12 +332,45 @@ function stop() {
 	juju-log "tomcat7 shuting down."
 }
 
+function noXUI() {
+	if [ $OPENAM_RELEASE_N -gt 1102 ]; then
+	$SSOADM set-attr-defs \
+		--servicename iPlanetAMAuthService \
+		--schematype Global \
+		--adminid amadmin \
+		--password-file $PWDFILE \
+		--attributevalues openam-xui-interface-enabled=false;
+	fi
+}
+
+function yesXUI() {
+	if [ $OPENAM_RELEASE_N -gt 1102 ]; then
+	$SSOADM set-attr-defs \
+		--servicename iPlanetAMAuthService \
+		--schematype Global \
+		--adminid amadmin \
+		--password-file $PWDFILE \
+		--attributevalues openam-xui-interface-enabled=true;
+	fi
+}
+
+# Remove default cookie, so host based wiull be used by default and CDSSO
+function clear_cookie() {
+	$SSOADM set-attr-defs \
+		--servicename iPlanetAMPlatformService \
+		--schematype global \
+		--adminid amadmin \
+		--password-file $PWDFILE \
+		--attributevalues "iplanet-am-platform-cookie-domains=";
+}
 
 cmd=$(basename "$0")
 case "$cmd" in
 	config-changed | upgrade-charm)
         setupAM;
         install-ssoadm;
+        clear_cookie;
+        noXUI;
         ;;
 	install)
         install;

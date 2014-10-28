@@ -48,13 +48,12 @@ th,td {
 </STYLE>
 </head>
 <body>
-<h1 style="margin-top: 5%;">Identity Relationship<br>Management Summit</h1>
-<h4 class="lowercase">June 3 - 5, 2014<br>
-				Phoenix, Arizona</h4>
+<h1 style="margin-top: 5%;">ForgeRock OpenAM<br>demo</h1>
+<h4 class="lowercase">Apache Web agent</h4>
 
 <div class="box1">
 <br/>
-<div style="text-align:center; font-size:1.8rem;">Welcome to the Summit</div>
+<div style="text-align:center; font-size:1.8rem;">Welcome...</div>
 </br>
 <table border="0" cellspacing="5">
 <?php

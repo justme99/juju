@@ -26,7 +26,7 @@ function changed() {
 
 	HOSTNAME_PUBLIC=$(unit-get public-address);
     DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
-    
+
 
     APACHE_PORT=$(relation-get apache_port);
     if [ -z "$APACHE_PORT" ]; then
@@ -42,7 +42,7 @@ function changed() {
         --attributevalues \
         "userpassword=pacangetin" \
         "com.sun.identity.agents.config.sso.only=true" \
-        "com.sun.identity.agents.config.cdsso.enable=false" \
+        "com.sun.identity.agents.config.cdsso.enable=true" \
         "com.sun.identity.agents.config.fqdn.check.enable=false" \
         "com.sun.identity.agents.config.profile.attribute.fetch.mode=HTTP_HEADER" \
         "com.sun.identity.agents.config.profile.attribute.mapping[dn]=dn" \
@@ -52,8 +52,7 @@ function changed() {
         "com.sun.identity.agents.config.profile.attribute.mapping[fullName]=fullName" \
         "com.sun.identity.agents.config.profile.attribute.mapping[givenName]=givenName" \
         "com.sun.identity.agents.config.profile.attribute.mapping[telephoneNumber]=telephoneNumber" \
-        "com.sun.identity.ageents.config.cdsso.cookie.domain[0]=.$DOMAIN" \
-        "sunIdentityServerDeviceKeyValue[0]=agentRootURL=http://$(unit-get public-address):$APACHE_PORT/" \
+        "sunIdentityServerDeviceKeyValue[0]=agentRootURL=$AGENT_URL" \
         --serverurl $OPENAM_URL \
         --agenturl $AGENT_URL \
         --adminid amadmin \

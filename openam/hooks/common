@@ -6,6 +6,10 @@ export OPENAM_WAR="OpenAM-12.0.0-SNAPSHOT.war";
 export CONFIGURATOR_FILE="SSOConfiguratorTools-12.0.0-SNAPSHOT.zip";
 export SSOADM_FILE="SSOAdminTools-12.0.0-SNAPSHOT.zip";
 
+#export OPENAM_WAR="OpenAM-11.0.2.war";
+#export CONFIGURATOR_FILE="SSOConfiguratorTools-11.0.2.zip";
+#export SSOADM_FILE="SSOAdminTools-11.0.2.zip";
+
 export OPENAM_REALM="/";
 export OPENAM_ADMIN="amadmin";
 export PWDFILE="$CHARM_DIR/ssoadm/pwd.txt";

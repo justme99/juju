@@ -2,17 +2,16 @@
 . hooks/common
 PUBLIC_HOSTNAME=$(unit-get public-address);
 HOSTNAME=$(echo $PUBLIC_HOSTNAME | cut -d'.' -f1);
-export AGENT_NAME="Apache24-$HOSTNAME";
-export AGENT_TYPE="WebAgent";
-export APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
+AGENT_NAME="Apache24-$HOSTNAME";
+AGENT_TYPE="WebAgent";
+APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
+AGENT_URL="http://$(unit-get public-address):$APACHE_PORT/";
+AGENT_HOME="$CHARM_DIR/web_agents/apache24_agent";
 
 function joined() {
     juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
     
     relation-set apache_port="$APACHE_PORT";
-    
-    AGENT_URL=http://$(unit-get public-address):$APACHE_PORT;
-    
     relation-set agent_url="$AGENT_URL";
     relation-set agent_name="$AGENT_NAME";
     relation-set agent_type="$AGENT_TYPE";
@@ -23,14 +22,15 @@ function changed() {
     juju-log "CHARM_DIR:$CHARM_DIR";
 
     openam_url=$(relation-get openam_url);
+
     if [ -z "$openam_url" ]; then
         return;
     fi
 
     echo "$openam_url/UI/Logout" > /var/www/irm/logout.txt;
- 
+
     unzip -qo $CHARM_DIR/$AGENT_FILE;
-    cd $CHARM_DIR/apache_agent;
+    cd $AGENT_HOME;
     echo "pacangetin" > pwd.txt;
     chmod 400 pwd.txt;
 
@@ -38,7 +38,7 @@ function changed() {
 cat << ENDCONFIG > httpd_pa_config.conf
 CONFIG_DIR=/etc/apache2
 AM_SERVER_URL=$openam_url
-AGENT_URL=http://$(unit-get public-address):$APACHE_PORT
+AGENT_URL=$AGENT_URL
 AGENT_PROFILE_NAME=$AGENT_NAME
 AGENT_PASSWORD_FILE=pwd.txt
 ENDCONFIG
@@ -53,7 +53,7 @@ ENDCONFIG
 
     ./bin/agentadmin --install --acceptLicense --useResponse httpd_pa_config.conf
 
-    chown -R www-data $CHARM_DIR/apache_agent
+    chown -R www-data $AGENT_HOME;
 
     service apache2 start
     juju-log "OpenAM Apache PA installation complete."
@@ -66,7 +66,7 @@ function departed() {
 
 function broken() {
 	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-    cd $CHARM_DIR/apache_agent;
+    cd $AGENT_HOME;
 	if [ -d Agent_001 ];then
     	./bin/agentadmin --uninstall --acceptLicense --useResponse httpd_pa_config.conf
         rm -fr Agent_00?;

@@ -1,3 +1,3 @@
 #!/bin/bash -e
-export REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/trunk";
-export AGENT_FILE="Apache-v2.4-Linux-64-Agent-3.3.0.zip";
+export REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
+export AGENT_FILE="Apache-v2.4-Linux-64-Agent-3.3.3.zip";
