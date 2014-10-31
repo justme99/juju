@@ -23,9 +23,11 @@ function changed() {
         fi
         CLIENT_SECRET=$(relation-get client_secret);
         HOSTNAME_PUBLIC=$(unit-get public-address);
+        echo "$REDIRECT_URI?logout=$OPENAM_URL" > /var/www/oidc/oidc_logout.txt;
+        echo "$REDIRECT_URI?logout=$OPENAM_URL/UI/Logout" > /var/www/oidc/openam_logout.txt;
 
 cat << EOF > $OIDC_CONF_FILE;
-    <VirtualHost *:443>
+<VirtualHost *:443>
 SSLEngine on
 SSLCertificateFile $SSL_CERT_FILE
 SSLCertificateKeyFile $SSL_KEY_FILE
@@ -49,6 +51,7 @@ OIDCClientID OIDCAgent
 OIDCClientSecret $CLIENT_SECRET
 OIDCDiscoverURL $OPENAM_URL/.well-known/openid-configuration
 OIDCRedirectURI $REDIRECT_URI
+#OIDCProviderEndSessionEndpoint $OPENAM_URL/oauth2/connect/endSession
 
 OIDCSSLValidateServer Off
 OIDCOAuthSSLValidateServer Off

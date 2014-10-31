@@ -46,6 +46,19 @@ th,td {
 	font-size: 1.2rem;
 }
 </STYLE>
+<script>
+/**
+ * Delete a Cookie
+ * @param key name of the cookie
+ */
+function deleteCookie(key)
+{
+  // Delete a cookie by setting the date of expiry to yesterday
+  date = new Date();
+  date.setDate(date.getDate() -1);
+  document.cookie = escape(key) + '=;expires=' + date;
+}
+</script>
 </head>
 <body>
 <h1 style="margin-top: 5%;">ForgeRock OpenAM<br>demo</h1>
@@ -73,16 +86,20 @@ if(!empty($familyName)){
                         echo "<tr><td>$key:</td><td>$value</td></tr>";
                 }
         }
-        echo "<tr><td colspan='2'><div style=\"text-align:center;\"><form method=post action=";
-        echo "$logout/oauth2/connect/endSession?id_token=$idtoken";
-        echo "><button type=submit name=logout>Logout</button></td></tr>";
-	echo "<tr><td colspan=2>$logout/oauth2/connect/endSession?id_token=$idtoken</td></tr>";
+
+        echo "<tr><td><a href=\"";
+        include("oidc_logout.txt");
+        echo "\"><button>OIDC logout</button></a></td><td><a href=\"";
+        include("openam_logout.txt");
+        echo "\"><button>OpenAM logout</button></td></tr>";
 } else {
         echo "<tr><td colspan='2'>I don't know who you are !!!</td></tr>";
 }
 ?>
 </table>
 </div>
-
+<!--
+<button onclick="deleteCookie('mod_auth_openidc_session')">Kill Cookie</button>
+-->
 </body>
 </html>

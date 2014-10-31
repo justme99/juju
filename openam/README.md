@@ -64,7 +64,11 @@ In addition you have to set a "private" admin password for your deployment, eith
 Step by step instructions on using the charm:
 
     juju deploy openam --constraints="mem=4G arch=amd64"
-	juju set openam accept_license='true' amadmin_password='cangetin'
+	juju set openam Accept_license='true' Amadmin_password='cangetin'
+
+In addition you can also set a FQDN to be used as the default hostname in addition to the dynanically created one.
+
+juju set openam FQDN_server_alias='my-fqdn.mydomain.com';
 
 The instance running OpenAM needs at least 4GB RAM.
 
@@ -88,7 +92,9 @@ OpenAM itself is highly scalable using built-in a site configuration option and 
 
 This release of OpenAM is meant for evaluation purposes only and will violate the license terms if used in a production environment. There is no limitation in features of the product.
 
-The 'unit-get public-address' call in Juju install hook needs to return a Fully Qualified Domain Name (FQDN), just an IP address will abort the installation.
+The 'unit-get public-address' call in Juju install hook needs to return a Fully Qualified Domain Name (FQDN), just an IP address will abort the installation if no FQDN alias is used.
+
+The 'amadmin' password will only be set on initial installation. It is not supported to change it from within Juju with the current version of this charm.
 
 Other limitations of this charm
 - Autoscaling is not supported in this charm release

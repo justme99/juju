@@ -62,6 +62,8 @@ $fullName = $headers['cn'];
 
 if(!empty($fullName)){
         echo "<tr><td>Full name:</td><td>" . $fullName . "</td></tr>";
+        echo "<tr><td>email:</td><td>" . $headers['mail'] . "</td></tr>";
+        echo "<tr><td>uid:</td><td>" . $headers['uid'] . "</td></tr>";
         echo "<tr><td>telephoneNumber:</td><td>" . $headers['telephoneNumber'] . "</td></tr>";
         echo "<tr><td colspan='2'><div style=\"text-align:center;\"><form method=post action=";
         include("logout.txt");

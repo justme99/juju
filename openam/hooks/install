@@ -6,17 +6,28 @@ export TOMCAT_CONFIG_FILE="$TOMCAT_HOME/conf/server.xml";
 export KEYSTORE="$TOMCAT_HOME/conf/keystore.jks";
 export KEYSTORE_PWD="changeit";
 export OPENAM_HOME="$CHARM_DIR/openam";
+export PUBLIC_HOSTNAME=$(unit-get public-address);
 
 function install() {
 	apt-get -y -qq install unzip default-jre tomcat7;
 
-	ACCEPT_LICENSES=$(config-get accept_license);
+	ACCEPT_LICENSES=$(config-get Accept_license);
 	juju-log "ACCEPT_LICENSES:$ACCEPT_LICENSES";
 	if [ "${ACCEPT_LICENSES}" != "True" ]; then
 		juju-log "License has to be accepted before installing."
 		exit 1
 	fi
-
+    
+    AMADMIN_PWD=$(config-get Amadmin_password);
+    if [ -z "${AMADMIN_PWD}" ]; then
+		juju-log "OpenAM amadmin password has to be set before installation can proceed."
+		exit 1
+	fi
+    if [ ${#AMADMIN_PWD} -lt 8 ]; then
+		juju-log "Administrator password must be atleast 8 characters."
+		exit 1
+	fi
+	
 	cd $CHARM_DIR;
 
 	# Download WAR file
@@ -47,9 +58,9 @@ function install() {
 		exit 1;
 	fi
 
-	juju-log "Installing package unzip and tomcat7";
+	# Keep original Tomcat server.xml file for later patching when config is changed.
+	cp $TOMCAT_CONFIG_FILE $TOMCAT_CONFIG_FILE-org;
 
-	cp $TOMCAT_CONFIG_FILE $TOMCAT_CONFIG_FILE-org
 	if [ -f $TOMCAT_HOME/webapps/ROOT/index.html ]; then
 		rm $TOMCAT_HOME/webapps/ROOT/index.html
 	fi
@@ -77,135 +88,46 @@ END
 
 	# To enable SSL, need to create a keystore and cert
 	JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
+	if [ -f "$KEYSTORE" ]; then
+		rm -f $KEYSTORE;
+	fi
 	$JAVA_HOME/bin/keytool -genkey -noprompt -trustcacerts -keyalg RSA \
 		-alias tomcat -dname CN=CA -keypass $KEYSTORE_PWD -storepass $KEYSTORE_PWD -keystore $KEYSTORE
-}
 
-#
-# If the config params Tomcat port or the JAVA_OPTS is the only changes, there
-# is no need to do a complete reinstall of OpenAM.
-#
-function setupAM() {
-    # Need to invalidate any current relations since OpenAM will be reinstalled
+	juju-log "Preparing and deploying the OpenAM war.";
 
-    AMADMIN_PWD=$(config-get amadmin_password);
-    if [ -z "${AMADMIN_PWD}" ]; then
-		juju-log "OpenAM amadmin password has to be set before installation can proceed."
-		exit 1
-	fi
-    if [ ${#AMADMIN_PWD} -lt 8 ]; then
-		juju-log "Administrator password must be atleast 8 characters."
-		exit 1
-	fi
-	
-	HOSTNAME_PUBLIC=$(unit-get public-address);
-	if [ -z $(echo $HOSTNAME_PUBLIC | sed 's/\.//g' | sed 's/[0-9]//g') ]; then
-		juju-log "OpenAM need a FQDN to be resolved from the 'unit-get public-address'. Can not use pure IP: $PUBLIC_HOSTNAME";
-		exit 1;
-	fi
-    tomcatObtainTomcatLock;
     stop;
-    
-    HTTP_PORT=$(config-get http_port);
-    HTTPS_PORT=$(config-get https_port);
-    
-    HOSTNAME_PRIVAT=$(unit-get private-address);
-    OPENAM_ADMIN="amadmin";
-    OPENAM_URL="http://$HOSTNAME_PUBLIC:$HTTP_PORT";
-    OPENAM_DEPLOYMENT_URI="/openam";
-    
-    #http_port
-    OLD_PORT=$(grep -i "Connector port=\"" $TOMCAT_HOME/conf/server.xml | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
-    OLD_SSL_PORT=$(grep -i "Connector port=\"" $TOMCAT_HOME/conf/server.xml | grep "SSL" | grep -v "AJP" | cut -d'"' -f2);
-    close-port ${OLD_PORT};
-    close-port ${OLD_SSL_PORT};
 
-    cp $TOMCAT_CONFIG_FILE-org $TOMCAT_CONFIG_FILE
-
-    sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_CONFIG_FILE
-    sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
-
-    # HTTPS configuration of Tomcat/OpenAM as standalone
-    sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_CONFIG_FILE
-    sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html
-    KEYSTORE_FILE_Q=$(echo $KEYSTORE | sed 's,/,\\/,g');
-    sed -i -e "s/sslProtocol=\"TLS\"/sslProtocol=\"TLS\" keystoreFile=\"$KEYSTORE_FILE_Q\" keystorePass=\"$KEYSTORE_PWD\"/g" $TOMCAT_CONFIG_FILE
-
-{
-ed -s $TOMCAT_CONFIG_FILE <<EOF
-/SSLEnabled="true"
--1d
-/\/>
-+1d
-wq
-EOF
-} &>/dev/null 
-
-	open-port ${HTTP_PORT};
-	open-port ${HTTPS_PORT};
-	juju-log "Opened default port:$HTTP_PORT and SSL port:$HTTPS_PORT used by Tomcat/Openam.";
-
-	#java_opts
-	JAVA_ARGS=$(config-get java_opts);
-
-	# If file exists, OpenAM has been fully deployed earlier
-	if [ -f /usr/share/tomcat7/bin/setenv.sh ]; then
-    	rm /usr/share/tomcat7/bin/setenv.sh
-	fi
-
-	# Replace it anyway, tomcat will be restarted
-    echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
-	juju-log "JAVA_OPTS is set to: $JAVA_ARGS";
-
-	# AMADMIN PWD
-	OLD_PWD="";
-	if [ -f $PWDFILE ]; then
-    	OLD_PWD=$(<$PWDFILE);
-    fi
-
-	juju-log "OLD_PWD:'$OLD_PWD', AMADMIN_PWD:'$AMADMIN_PWD'";
-	if [ ! -z "$OLD_PWD" -a "$OLD_PWD" == "$AMADMIN_PWD" ]; then
-    	# Then there is no need to reinstall OpenAM, just restarting Tomcat with the new config
-    	juju-log "PWD EQUAL, just restarting Tomcat, nothing more to do";
-    	service tomcat7 restart;
-    	exit 0;
-    fi
-
-	juju-log "AMADMIN password is different, need to reinstall";
-
+    # Already installed ?
 	if [ -d "/root/.openamcfg" ];then
     	rm -fr /root/.openamcfg;
     fi
-
-	mkdir /root/.openamcfg;
-	
-	# Make sure the tomcat user can write to the "home" directory 
+    mkdir /root/.openamcfg;
+    # Make sure the tomcat user can write to the "home" directory 
 	chown -R tomcat7 /root/.openamcfg;
-	juju-log "Created .openssocfg directory for OpenAM install check.";
+	juju-log "Created .openssocfg directory for OpenAM installation.";
 
 	if [ -d "/usr/share/tomcat7/openam" ];then
     	rm -fr /usr/share/tomcat7/openam;
     fi
-
 	mkdir /usr/share/tomcat7/openam;
     chown -R tomcat7 /usr/share/tomcat7;
     juju-log "Created default OpenAM install directory in /usr/share/tomcat7/openam";
-
     if [ -d $TOMCAT_HOME/webapps/openam ];then
-		juju-log "Undeploying war openam"
+		juju-log "Undeploying OpenAM war file."
 		rm -fr $TOMCAT_HOME/webapps/openam;
-		rm -f $TOMCAT_HOME/webapps/openam.war;
 	fi
 
     unzip -qqo $OPENAM_WAR -d $TOMCAT_HOME/webapps/openam
     chown -R tomcat7 $TOMCAT_HOME/webapps;
 
     start;
-    tomcatReleaseTomcatLock;
-
+    
     #
     # Have to wait until Tomcat has started and OpenAM id deployed
     #
+    HTTP_PORT=$(config-get http_port);
+
     ALIVE=0
     TRY=0
     MAX=30
@@ -214,24 +136,31 @@ EOF
     #
     until [ ! -z "$(curl --silent --show-error --connect-timeout 1 --max-time 5 -I http://localhost:$HTTP_PORT 2>/dev/null | grep 'Coyote')" ];
     do
-	TRY=$[TRY+1];
-	if [ "$TRY" -eq "$MAX" ]; then
-	    break;
-	    fi
+		TRY=$[TRY+1];
+		if [ "$TRY" -eq "$MAX" ]; then
+	    	break;
+	 	fi
         juju-log "Wait, Tomcat is restarting....."
         sleep 10
         tail -n 1 $TOMCAT_HOME/logs/catalina.out
 	done
 
-    DOMAIN=$(echo "$HOSTNAME_PUBLIC" | awk -F "." '{print $(NF-1)"."$NF}');
-    #DOMAIN=$(echo $HOSTNAME_PUBLIC | cut -d"." -f2-);
+	if [ "$TRY" -eq "$MAX" ]; then
+		juju-log "OpenAM did not start within a reasoable time, aborting."
+		exit 1;
+	fi
 
-    juju-log "Running configurator for fqdn '$HOSTNAME_PUBLIC' with domain: '$DOMAIN'."
+#	sethostname;
+
+    DOMAIN=$(echo "$PUBLIC_HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
+#   DOMAIN=$(echo $PUBLIC_HOSTNAME | cut -d"." -f2-);
+
+    juju-log "Running configurator for '$PUBLIC_HOSTNAME' with domain: '$DOMAIN'."
 
     AMLDAPUSERPASSWD="pa$AMADMIN_PWD";
 
 cat << ENDCONFIG > config.conf
-SERVER_URL=http://$HOSTNAME_PUBLIC:$HTTP_PORT
+SERVER_URL=http://$PUBLIC_HOSTNAME:$HTTP_PORT
 DEPLOYMENT_URI=/openam
 BASE_DIR=/usr/share/tomcat7/openam
 locale=en_US
@@ -250,11 +179,8 @@ DIRECTORY_JMX_PORT=1689
 ROOT_SUFFIX=dc=example,dc=com
 DS_DIRMGRDN=cn=Directory Manager
 DS_DIRMGRPASSWD=secret12
+ACCEPT_LICENSES=true
 ENDCONFIG
-
-	if [ $OPENAM_RELEASE_N -ge 1102 ]; then
-    	echo "ACCEPT_LICENSES=true" >> config.conf
-	fi
 
 	unzip -qqo $CONFIGURATOR_FILE;
 	if [ ! -f "tool.jar" ]; then
@@ -262,13 +188,137 @@ ENDCONFIG
 	fi
 	
 	java -jar tool.jar -f ./config.conf;
+	juju-log "Done deploying OpenAM in Tomcat."
+}
 
-	service tomcat7 restart;
+#
+# If the config params Tomcat port or the JAVA_OPTS is the only changes, there
+# is no need to do a complete reinstall of OpenAM.
+#
+function config-changed() {
+	
+	# If amadmin password is changed, just ignore. The initial will be used.
+	AMADMIN_PWD=$(config-get Amadmin_password);
+	OLD_PWD="";
+	if [ -f $PWDFILE ]; then
+    	OLD_PWD=$(<$PWDFILE);
+    fi
+	juju-log "OLD_PWD:'$OLD_PWD', AMADMIN_PWD:'$AMADMIN_PWD'";
+	if [ -z "$OLD_PWD" -o "$OLD_PWD" != "$AMADMIN_PWD" ]; then
+    	juju-log "Changing the amdadmin password after installation is not supportted";
+    	config-set Amadmin_password="$OLD_PWD";
+    fi
+	
+#    sethostname;
+
+	if [ -z $(echo $PUBLIC_HOSTNAME | sed 's/\.//g' | sed 's/[0-9]//g') ]; then
+		juju-log "OpenAM needs a FQDN to be installed. Can not use pure IP: $PUBLIC_HOSTNAME";
+		exit 1;
+	fi
+    
+    HTTP_PORT=$(config-get http_port);
+    HTTPS_PORT=$(config-get https_port);
+    
+    OPENAM_ADMIN="amadmin";
+    OPENAM_URL="http://$PUBLIC_HOSTNAME:$HTTP_PORT";
+    OPENAM_DEPLOYMENT_URI="/openam";
+    
+    #
+    # Tomcat updated configuration
+
+    cp $TOMCAT_CONFIG_FILE-org $TOMCAT_CONFIG_FILE
+    
+    #http_port
+    OLD_PORT=$(grep -i "Connector port=\"" $TOMCAT_CONFIG_FILE | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
+    OLD_SSL_PORT=$(grep -i "Connector port=\"" $TOMCAT_CONFIG_FILE | grep "SSL" | grep -v "AJP" | cut -d'"' -f2);
+    close-port ${OLD_PORT};
+    close-port ${OLD_SSL_PORT};
+
+    sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_CONFIG_FILE;
+    sed -i -e "s/port=\"8080\"/port=\"$HTTP_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html;
+
+    # HTTPS configuration of Tomcat/OpenAM as standalone
+    sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_CONFIG_FILE;
+    sed -i -e "s/ort=\"8443\"/ort=\"$HTTPS_PORT\"/g" $TOMCAT_HOME/webapps/ROOT/index.html;
+    KEYSTORE_FILE_Q=$(echo $KEYSTORE | sed 's,/,\\/,g');
+    sed -i -e "s/sslProtocol=\"TLS\"/sslProtocol=\"TLS\" keystoreFile=\"$KEYSTORE_FILE_Q\" keystorePass=\"$KEYSTORE_PWD\"/g" $TOMCAT_CONFIG_FILE;
+
+{
+ed -s $TOMCAT_CONFIG_FILE <<EOF
+/SSLEnabled="true"
+-1d
+/\/>
++1d
+wq
+EOF
+} &>/dev/null 
+
+	open-port ${HTTP_PORT};
+	open-port ${HTTPS_PORT};
+	juju-log "Opened default port:$HTTP_PORT and SSL port:$HTTPS_PORT used by Tomcat/Openam.";
+
+	#java_opts
+	JAVA_ARGS=$(config-get java_opts);
+
+	# If file exists, OpenAM has been fully deployed earlier.
+	if [ -f /usr/share/tomcat7/bin/setenv.sh ]; then
+    	rm /usr/share/tomcat7/bin/setenv.sh
+	fi
+	# Replace it anyway, tomcat will be restarted
+    echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
+	juju-log "JAVA_OPTS is set to: $JAVA_ARGS";
+
+	HOST_ALIAS=$(config-get FQDN_server_alias);
+	# Need to add a host alias ?, if using the default EC2 etc. generated one make cookies hostbased.
+	if [ ! -z "$HOST_ALIAS" ]; then
+		$SSOADM update-server-cfg \
+			--servername default \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--attributevalues com.sun.identity.server.fqdnMap[$HOST_ALIAS]=$HOST_ALIAS;
+		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
+
+    	DOMAIN=$(echo "$PUBLIC_HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
+
+		$SSOADM set-realm-attrs \
+			--realm / \
+			--servicename sunIdentityRepositoryService \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--append \
+			--attributevalues sunOrganizationAliases=$DOMAIN;
+
+    	juju-log "Adding cookie domain: .$DOMAIN"
+		$SSOADM set-attr-defs \
+			--servicename iPlanetAMPlatformService \
+			--schematype global \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
+
+    	DOMAIN=$(echo "$HOST_ALIAS" | awk -F "." '{print $(NF-1)"."$NF}');
+    	juju-log "Adding cookie domain: .$DOMAIN"
+		$SSOADM set-attr-defs \
+			--servicename iPlanetAMPlatformService \
+			--schematype global \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
+		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
+	else
+		$SSOADM set-attr-defs \
+			--servicename iPlanetAMPlatformService \
+			--schematype global \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--attributevalues "iplanet-am-platform-cookie-domains=";
+		juju-log "OpenAM domain cookies cleared.";
+	fi
 	juju-log "OpenAM configurator completed.";
 }
 
 function install-ssoadm() {
-	AMADMIN_PWD=$(config-get amadmin_password);
+	AMADMIN_PWD=$(config-get Amadmin_password);
 	export JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
 	if [ -d $CHARM_DIR/ssoadm ]; then
 		juju-log "SSOADM already installed.";
@@ -281,6 +331,12 @@ function install-ssoadm() {
 
     echo "$AMADMIN_PWD" > $PWDFILE;
     chmod 400 $PWDFILE;
+    #
+    # Have to wait until Tomcat has started and OpenAM id deployed
+    #
+    ALIVE=0
+    TRY=0
+    MAX=30
 
 	until [ ! -z "$(curl --silent --show-error --connect-timeout 1 --max-time 5 -I http://localhost:$HTTP_PORT 2>/dev/null | grep 'Coyote')" ];
 	do
@@ -313,6 +369,26 @@ function install-ssoadm() {
 	juju-log "done."
 }
 
+#function sethostname() {
+#	PUBLIC_ADDRESS=$(unit-get public-address);
+#	HOST_ALIAS=$(config-get FQDN_server_alias);
+	#
+	# If the user has entered a FQDN to be used as the hostname for this server use that as default.
+	# 
+ #   if [ ! -z $HOST_ALIAS ]; then
+ #       PUBLIC_HOSTNAME="$HOST_ALIAS";
+ #       if [ ! -z "$(nslookup -timeout=2 $PUBLIC_HOSTNAME | grep '** server can')" ]; then
+ #       	# If it does not resolve, add it to the local hostfile, assuming a local mapping is in place.
+ #           if [ -z $(grep "$PUBLIC_HOSTNAME" /etc/hosts) ]; then
+ #               echo "127.0.0.1 $PUBLIC_HOSTNAME" >> /etc/hosts;
+ #           fi
+ #       fi
+ #  	else
+ #       PUBLIC_HOSTNAME="$PUBLIC_ADDRESS";
+# 	fi
+# 	PUBLIC_HOSTNAME="$PUBLIC_ADDRESS";
+#}
+
 function tomcatObtainTomcatLock() {
 	(umask 0077; touch /etc/tomcat7/tomcat.lock)
 	exec 9> /etc/tomcat7/tomcat.lock; flock 9;
@@ -334,46 +410,39 @@ function stop() {
 
 function noXUI() {
 	if [ $OPENAM_RELEASE_N -gt 1102 ]; then
-	$SSOADM set-attr-defs \
-		--servicename iPlanetAMAuthService \
-		--schematype Global \
-		--adminid amadmin \
-		--password-file $PWDFILE \
-		--attributevalues openam-xui-interface-enabled=false;
+		$SSOADM set-attr-defs \
+			--servicename iPlanetAMAuthService \
+			--schematype Global \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--attributevalues openam-xui-interface-enabled=false;
+			juju-log "OpenAM XUI is turned 'off'";
 	fi
 }
 
 function yesXUI() {
 	if [ $OPENAM_RELEASE_N -gt 1102 ]; then
-	$SSOADM set-attr-defs \
-		--servicename iPlanetAMAuthService \
-		--schematype Global \
-		--adminid amadmin \
-		--password-file $PWDFILE \
-		--attributevalues openam-xui-interface-enabled=true;
+		$SSOADM set-attr-defs \
+			--servicename iPlanetAMAuthService \
+			--schematype Global \
+			--adminid amadmin \
+			--password-file $PWDFILE \
+			--attributevalues openam-xui-interface-enabled=true;
+		juju-log "OpenAM XUI is turned 'on'";
 	fi
-}
-
-# Remove default cookie, so host based wiull be used by default and CDSSO
-function clear_cookie() {
-	$SSOADM set-attr-defs \
-		--servicename iPlanetAMPlatformService \
-		--schematype global \
-		--adminid amadmin \
-		--password-file $PWDFILE \
-		--attributevalues "iplanet-am-platform-cookie-domains=";
 }
 
 cmd=$(basename "$0")
 case "$cmd" in
 	config-changed | upgrade-charm)
-        setupAM;
-        install-ssoadm;
-        clear_cookie;
-        noXUI;
+        config-changed;
+        stop;
+        start;
         ;;
 	install)
         install;
+        install-ssoadm;
+        noXUI;
         ;;
     start)
 		start;
