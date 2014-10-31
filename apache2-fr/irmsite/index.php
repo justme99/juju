@@ -6,7 +6,7 @@ body {
 	font-weight: 300;
 	font-size: 1rem;
 	background-color: #2D3437;
-	background-image: url('../FR_home_image.jpg');
+	background-image: url('./FR_home_image.jpg');
 	background-size: cover;
 	height: 100vh;
 }

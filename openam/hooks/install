@@ -264,7 +264,7 @@ EOF
 	if [ -f /usr/share/tomcat7/bin/setenv.sh ]; then
     	rm /usr/share/tomcat7/bin/setenv.sh
 	fi
-	# Replace it anyway, tomcat will be restarted
+	# Replace it anyway, Tomcat will be restarted
     echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
 	juju-log "JAVA_OPTS is set to: $JAVA_ARGS";
 
@@ -286,34 +286,34 @@ EOF
 			--adminid amadmin \
 			--password-file $PWDFILE \
 			--append \
-			--attributevalues sunOrganizationAliases=$DOMAIN;
+			--attributevalues sunOrganizationAliases=$HOST_ALIAS;
 
-    	juju-log "Adding cookie domain: .$DOMAIN"
-		$SSOADM set-attr-defs \
-			--servicename iPlanetAMPlatformService \
-			--schematype global \
-			--adminid amadmin \
-			--password-file $PWDFILE \
-			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
-
-    	DOMAIN=$(echo "$HOST_ALIAS" | awk -F "." '{print $(NF-1)"."$NF}');
-    	juju-log "Adding cookie domain: .$DOMAIN"
-		$SSOADM set-attr-defs \
-			--servicename iPlanetAMPlatformService \
-			--schematype global \
-			--adminid amadmin \
-			--password-file $PWDFILE \
-			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
-		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
-	else
-		$SSOADM set-attr-defs \
-			--servicename iPlanetAMPlatformService \
-			--schematype global \
-			--adminid amadmin \
-			--password-file $PWDFILE \
-			--attributevalues "iplanet-am-platform-cookie-domains=";
-		juju-log "OpenAM domain cookies cleared.";
+#    	juju-log "Adding cookie domain: .$DOMAIN"
+#		$SSOADM set-attr-defs \
+#			--servicename iPlanetAMPlatformService \
+#			--schematype global \
+#			--adminid amadmin \
+#			--password-file $PWDFILE \
+#			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
+#
+#    	DOMAIN=$(echo "$HOST_ALIAS" | awk -F "." '{print $(NF-1)"."$NF}');
+#   	juju-log "Adding cookie domain: .$DOMAIN"
+#		$SSOADM set-attr-defs \
+#			--servicename iPlanetAMPlatformService \
+#			--schematype global \
+#			--adminid amadmin \
+#			--password-file $PWDFILE \
+#			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
+#		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
 	fi
+	$SSOADM set-attr-defs \
+		--servicename iPlanetAMPlatformService \
+		--schematype global \
+		--adminid amadmin \
+		--password-file $PWDFILE \
+		--attributevalues "iplanet-am-platform-cookie-domains=";
+	juju-log "OpenAM using hostbased cookies.";
+	
 	juju-log "OpenAM configurator completed.";
 }
 

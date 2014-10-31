@@ -6,7 +6,7 @@ body {
 	font-weight: 300;
 	font-size: 1rem;
 	background-color: #2D3437;
-	background-image: url('../FR_home_image.jpg');
+	background-image: url('./FR_home_image.jpg');
 	background-size: cover;
 	height: 100vh;
 }
@@ -87,11 +87,12 @@ if(!empty($familyName)){
                 }
         }
 
-        echo "<tr><td><a href=\"";
+        echo "<tr><td colspan=2><a href=\"";
         include("oidc_logout.txt");
-        echo "\"><button>OIDC logout</button></a></td><td><a href=\"";
-        include("openam_logout.txt");
-        echo "\"><button>OpenAM logout</button></td></tr>";
+        echo "\"><button>OIDC logout</button></a></td></tr>";
+//<td><a href=\"";
+//        include("openam_logout.txt");
+//        echo "\"><button>OpenAM logout</button></td></tr>";
 } else {
         echo "<tr><td colspan='2'>I don't know who you are !!!</td></tr>";
 }
