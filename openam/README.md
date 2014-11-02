@@ -41,7 +41,7 @@ Federation services securely share identity information across heterogeneous sys
 To enable high availability for large-scale and mission-critical deployments, OpenAM provides both system failover and session failover. These two key features help to ensure that no single point of failure exists in the deployment, and that the OpenAM service is always available to end-users. Redundant OpenAM servers, policy agents, and load balancers prevent a single point of failure. Session failover ensures the user’s session continues uninterrupted, and no user data is lost. The high availability of OpenAM is based upon using a load balancing (either software or hardware based) which supports sticky sessions to distribute the load across all available OpenAM server. Should one server become unavailable, the load balancer fails client requests over to another OpenAM server. The other OpenAM server must then fail over the user session associated with the client.
 The session persistence repository is based on the bundled OpenDJ LDAP server. Recommended setup would be to have a external configuration of the OpenDJ as the session store which can scale and be redundant independent of the number of instances of OpenAM.
 
-##Futher documentation 
+##Further documentation 
 
 Can be found available online here:
 - [Documentation home](http://docs.forgerock.org)
@@ -57,22 +57,23 @@ Check out here: [Subscriptions](http://forgerock.com/products/subscriptions/).
 # Usage
 
 To be able to install OpenAM you have to accept the license term as outlined in the license file.
-You can either accept the license terms on the commmand line or by the checkbox in the Juju-gui.
+You can either accept the license terms on the command line or by the checkbox in the Juju-gui.
 
-In addition you have to set a "private" admin password for your deployment, either on the command or in th Juju-gui.
+In addition you have to set a "private" admin password for your deployment, either on the command line or in the Juju-gui.
 
 Step by step instructions on using the charm:
 
     juju deploy openam --constraints="mem=4G arch=amd64"
 	juju set openam Accept_license='true' Amadmin_password='cangetin'
 
-In addition you can also set a FQDN to be used as the default hostname in addition to the dynanically created one.
+In addition you can also set a FQDN to be added as a alias in addition to the initial default hostname used for installation.
+The alias host can then be a public resolvable FQDN or a name only resolvable on the local host. All Juju relationships will use the default initial returned by the 'unit-get public-address' function.
 
-juju set openam FQDN_server_alias='my-fqdn.mydomain.com';
+	juju set openam FQDN_OpenAM_alias='my-host.mydomain.com';
 
 The instance running OpenAM needs at least 4GB RAM.
 
-This relase of the OpenAM charm supports a Juju relationship to ForgeRock OpenDJ. OpenDJ is a LDAP directory server which in most cases are used as user repositories. OpenDJ comes with some sample users which can be added to the default authentication chain in OpenAM to test and verify how easy such a integration can be done. You can verify the users in the OpenAM web console in the following location both with and without a relationship:
+This relase of the OpenAM charm supports a Juju relationship to ForgeRock OpenDJ. OpenDJ is a LDAP directory server, which in most cases are used as user repositories. OpenDJ comes with some sample users that can be added to the default authentication chain in OpenAM to test and verify how easy such a integration can be done. You can verify the users in the OpenAM web console in the following location both with and without a relationship:
 
 - 'Access Control' -> '/ (Top Level Realm)' -> 'Subjects'
 
@@ -82,7 +83,8 @@ The datastore itself is created in
 
 and named 'opendj'.
 
-Many more relationships for both datastores and authentication services will be added in the future. Any contribution are welcome.
+Many more relationships for both datastores and authentication services will be added in the future. 
+Any contributions are welcome.
 
 ## Scale out Usage
 
@@ -96,10 +98,11 @@ The 'unit-get public-address' call in Juju install hook needs to return a Fully 
 
 The 'amadmin' password will only be set on initial installation. It is not supported to change it from within Juju with the current version of this charm.
 
-Other limitations of this charm
-- Autoscaling is not supported in this charm release
+Other limitations for this charm:
+- Autoscaling is not supported in this charm release. You can add and configure it manually if needed.
+- Using privileged ports (low ports numbers) are not supported
 - Only OpenDJ is tested as a user repository for authenticate users
-- Only the Apache OpenAM Agent relastionship is currently supported. Currently no support for the .Net and J2EE.
+- Only the Apache OpenAM Agent relationship is currently supported. Currently no support for the .Net and J2EE agents.
 - Only OpenID Connect is supported as a automatically way of authenticate users of any charm implementing the same interface 
 
 There will be more features and relationships to come.
@@ -109,15 +112,16 @@ In addition to the license agreement and the admin password you can change or se
 
 OpenAM uses the default Tomcat7 as it's java container for deployment. Default ports are 8080 and for SSL 8443 is used. There is a self-signed certificate created for SSL.
 
--  http_port, defaults to 8080
--  https_port, defaults to 8443
--  java_opts, defaults to '-Xmx1024m -XX:MaxPermSize=256m'
+- http_port, defaults to 8080
+- https_port, defaults to 8443
+- java_opts, defaults to '-Xmx1024m -XX:MaxPermSize=256m'
 
 You can then browse to http://ip-address:8080 or https://ip-address:8443 to further configure OpenAM. Default admin user is "amadmin" and password is the one defined on deployment.
 
 # Contact Information
 
-Stein Myrseth <stein.myrseth@forgerock.com>
+- Stein Myrseth <stein.myrseth@forgerock.com>
+- [Github](https://github.com/justme99/juju)
 
 ## ForgeRock
 - [ForgeRock Homepage](http://forgerock.com)

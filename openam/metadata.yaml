@@ -16,8 +16,8 @@ provides:
   openidc-discovery:
     interface: openidc
     optional: true
-    sets: [openam_url]
-    gets: [redirect_uri, agent_name, agent_type]
+    sets: [openam_url, metadataURL, client_id]
+    gets: [redirect_uri]
 #  openidc-provider:
 #    interface: openidc
 #    optional: true

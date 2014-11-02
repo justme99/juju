@@ -61,8 +61,12 @@ function deleteCookie(key)
 </script>
 </head>
 <body>
-<h1 style="margin-top: 5%;">ForgeRock OpenAM<br>demo</h1>
-<h4 class="lowercase">OpenID Connect</h4>
+<h1 style="margin-top: 5%;">ForgeRock OpenAM</h1>
+<h4>OpenID Connect - Apache - mod_auth_openidc</h4>
+
+<p align=center>
+<span style="background-color:#ffffff;font-size:1.2rem"><a href="https://github.com/pingidentity/mod_auth_openidc">Apache module: mod_auth_openidc</a></span>
+</p>
 
 <div class="box1">
 <br/>
@@ -83,16 +87,15 @@ if(!empty($familyName)){
 //              echo "$header --> $value <br />\n";
                 if(substr($header, 0, 10)=="OIDC_CLAIM") {
                         $key = substr($header, 11);
-                        echo "<tr><td>$key:</td><td>$value</td></tr>";
+                        if ($key != "urls" && $key != "photos") {
+                                echo "<tr><td>$key:</td><td>$value</td></tr>";
+                        }
                 }
         }
 
-        echo "<tr><td colspan=2><a href=\"";
+        echo "<tr><td colspan=2 align=center><a href=\"";
         include("oidc_logout.txt");
         echo "\"><button>OIDC logout</button></a></td></tr>";
-//<td><a href=\"";
-//        include("openam_logout.txt");
-//        echo "\"><button>OpenAM logout</button></td></tr>";
 } else {
         echo "<tr><td colspan='2'>I don't know who you are !!!</td></tr>";
 }

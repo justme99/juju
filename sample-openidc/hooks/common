@@ -1,17 +1,7 @@
 #!/bin/bash -e
 
 export REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
-#export SSOADM_FILE="SSOAdminTools-12.0.0-SNAPSHOT.zip";
-#export AGENT_FILE="Apache-v2.4-Linux-64-Agent-3.3.0.zip";
 export OIDC_MODULE="libapache2-mod-auth-openidc_1.6.0-1_amd64.deb";
-
-#export PWDFILE="$CHARM_DIR/ssoadm/pwd.txt";
-#export SSOADM="$CHARM_DIR/ssoadm/openam/bin/ssoadm";
-#export JAVA_HOME=$(readlink -f $(which java) | sed "s:bin/java::");
-
-#export OPENAM_RELEASE=$(echo $SSOADM_FILE | cut -d '-' -f2);
-# The following will get the OpenAM version as a 4 digit number
-#export OPENAM_RELEASE_N=$(echo $OPENAM_RELEASE | tr -d '.');
 export DOCROOT="/var/www/oidc";
 export DEFAULT_CONF_FILE="/etc/apache2/sites-available/default.conf";
 export OIDC_CONF_FILE="/etc/apache2/sites-available/oidc.conf";

@@ -86,7 +86,6 @@ The datastore itself is created in
 and named 'opendj' with the hostname of the OpenDJ instance added to it. 
 
 
-
 Many more relationships for both datastores and authentication services will be added in the future. Any contribution are welcome.
 
 ## Scale out Usage
@@ -116,7 +115,8 @@ If 'rest_enabled' is turned on, the default port is set to 8080. The full docume
 
 # Contact Information
 
-Stein Myrseth <stein.myrseth@forgerock.com>
+- Stein Myrseth <stein.myrseth@forgerock.com>
+- [Github](https://github.com/justme99/juju)
 
 ## ForgeRock
 - [ForgeRock Homepage](http://forgerock.com)

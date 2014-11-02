@@ -28,10 +28,10 @@ EOF
 
 	a2dissite 000-default.conf
 	a2ensite default
-
-	touch /etc/apache2/httpd.conf
-	echo "include /etc/apache2/httpd.conf" >> /etc/apache2/apache2.conf
-
+	
+    touch /etc/apache2/httpd.conf
+    echo "include /etc/apache2/httpd.conf" >> /etc/apache2/apache2.conf
+	
 	close-port 443
 	open-port 80
 	service apache2 reload

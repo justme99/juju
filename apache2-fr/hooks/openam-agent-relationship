@@ -2,7 +2,8 @@
 . hooks/common
 PUBLIC_HOSTNAME=$(unit-get public-address);
 HOSTNAME=$(echo $PUBLIC_HOSTNAME | cut -d'.' -f1);
-AGENT_NAME="Apache24-$HOSTNAME";
+#AGENT_NAME="Apache24-$HOSTNAME";
+AGENT_NAME="Apache24";
 AGENT_TYPE="WebAgent";
 APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
 AGENT_URL="http://$(unit-get public-address):$APACHE_PORT/";
@@ -66,13 +67,19 @@ function departed() {
 
 function broken() {
 	juju-log "openam-agent-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+    service apache2 stop;
     cd $AGENT_HOME;
 	if [ -d Agent_001 ];then
     	./bin/agentadmin --uninstall --acceptLicense --useResponse httpd_pa_config.conf
-        rm -fr Agent_00?;
-        rm -fr data/
     fi
-    service apache2 restart;
+    rm -fr Agent_00?;
+    rm -fr data/
+
+    if [ -f /etc/apache2/httpd.conf ]; then rm /etc/apache2/httpd.conf;fi
+    touch /etc/apache2/httpd.conf
+
+    service apache2 start;
+    juju-log "All traces of the agent removed."
 }
 
 

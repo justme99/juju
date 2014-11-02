@@ -1,30 +1,54 @@
 #!/bin/bash -ex
 . hooks/common
 
-AGENT_NAME="OIDCAgent";
-AGENT_TYPE="OAuth2Client";
 REDIRECT_URI="https://$(unit-get public-address)/secret";
 
 function joined() {
     juju-log "openidc-client-relation-joined on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
     juju-log "REDIRECT_URI:$REDIRECT_URI";
     relation-set redirect_uri="$REDIRECT_URI";
-    relation-set agent_name="$AGENT_NAME";
-    relation-set agent_type="$AGENT_TYPE";
+    CLIENT_ID=$(config-get client_id);
+    if [ ! -z "$(echo $JUJU_REMOTE_UNIT | grep openam)" ]; then
+        CLIENT_ID="OIDCAgent";
+    else
+        CLIENT_ID=$(config-get client_id);
+    fi
+   relation-set client_id="$CLIENT_ID";
 }
 
 function changed() {
         juju-log "openidc-client-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
 
-        OPENAM_URL=$(relation-get openam_url);
-        juju-log "$OPENAM_URL:'$OPENAM_URL'";
-        if  [ -z "$OPENAM_URL" ]; then
+        METADATAURL=$(relation-get metadataURL);
+
+        if  [ -z "$METADATAURL" ]; then
             return;
         fi
-        CLIENT_SECRET=$(relation-get client_secret);
+
+        CLIENT_ID=$(config-get client_id);
+        CLIENT_SECRET=$(config-get client_secret);
         HOSTNAME_PUBLIC=$(unit-get public-address);
-        echo "$REDIRECT_URI?logout=$OPENAM_URL" > /var/www/oidc/oidc_logout.txt;
-        echo "$REDIRECT_URI?logout=$OPENAM_URL/UI/Logout" > /var/www/oidc/openam_logout.txt;
+
+        if [ ! -z "$(echo $JUJU_REMOTE_UNIT | grep -i salesforce)" ]; then
+                SERVER_ALIAS="salesforce-juju.demo.org"
+#               REDIRECT_URI="https://$SERVER_ALIAS/secret";
+                echo "$REDIRECT_URI?logout=https://login.salesforce.com/services/oauth2/revoke " > /var/www/oidc/oidc_logout.txt;
+#               echo "$REDIRECT_URI?logout=$OPENAM_URL/UI/Logout" > /var/www/oidc/openam_logout.txt;
+        fi
+
+        if [ ! -z "$(echo $JUJU_REMOTE_UNIT | grep openam)" ]; then
+            CLIENT_ID="OIDCAgent";
+            CLIENT_SECRET="secret";
+            OPENAM_URL="";
+            # Special case for OpenAM as a OIDC provider end EndSession is broken
+            OPENAM_URL="$(echo $METADATAURL | cut -d'/' -f1-4)";
+            echo "$REDIRECT_URI?logout=$OPENAM_URL" > /var/www/oidc/oidc_logout.txt;
+            echo "$REDIRECT_URI?logout=$OPENAM_URL/UI/Logout" > /var/www/oidc/openam_logout.txt;
+        fi
+
+        juju-log "$CLIENT_ID='$CLIENT_ID', CLIENT_SECRET='$CLIENT_SECRET', METADATAURL='$METADATAURL'";
+
+# OpenAM need to add "profile" to the OpenAM scope, not needed for Salesforce...
 
 cat << EOF > $OIDC_CONF_FILE;
 <VirtualHost *:443>
@@ -36,28 +60,42 @@ SSLCertificateKeyFile $SSL_KEY_FILE
 #SessionCookieName session path=/
 
 ServerName $HOSTNAME_PUBLIC
+
 ErrorLog /var/log/apache2/oidc-error_log
 CustomLog /var/log/apache2/oidc-access_log common
 DocumentRoot $DOCROOT
 
 LogLevel trace8
-
-OIDCProviderIssuer $OPENAM_URL
-OIDCProviderAuthorizationEndpoint $OPENAM_URL/oauth2/authorize
-OIDCProviderTokenEndpoint $OPENAM_URL/oauth2/access_token
-OIDCProviderTokenEndpointAuth client_secret_post
-OIDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/userinfo
-OIDCClientID OIDCAgent
-OIDCClientSecret $CLIENT_SECRET
-OIDCDiscoverURL $OPENAM_URL/.well-known/openid-configuration
-OIDCRedirectURI $REDIRECT_URI
-#OIDCProviderEndSessionEndpoint $OPENAM_URL/oauth2/connect/endSession
-
+OIDCCookiePath /oidc/
 OIDCSSLValidateServer Off
 OIDCOAuthSSLValidateServer Off
-
 OIDCCryptoPassphrase password2
-OIDCScope "openid email profile"
+#OIDCScope "openid email profile"
+OIDCScope "openid"
+
+#
+# Discovery
+#
+OIDCProviderMetadataURL $METADATAURL
+OIDCClientID $CLIENT_ID
+OIDCClientSecret $CLIENT_SECRET
+OIDCRedirectURI $REDIRECT_URI
+OIDCCryptoPassphrase password2
+#
+# Using explicite endpoints
+#
+#OIDCProviderIssuer $OPENAM_URL
+#OIDCProviderAuthorizationEndpoint $OPENAM_URL/oauth2/authorize
+#OIDCProviderTokenEndpoint $OPENAM_URL/oauth2/access_token
+#OIDCProviderTokenEndpointAuth client_secret_post
+#OIDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/userinfo
+#OIDCClientID OIDCAgent
+#OIDCClientSecret $CLIENT_SECRET
+#OIDCDiscoverURL $OPENAM_URL/.well-known/openid-configuration
+#OIDCRedirectURI $REDIRECT_URI
+#
+# Default endSession endpoint currently broken in OpenAM as of 31.Oct.2014 
+#OIDCProviderEndSessionEndpoint $OPENAM_URL/oauth2/connect/endSession
 
 <Location />
     DirectoryIndex index.php
@@ -79,7 +117,7 @@ EOF
 
 function departed() {
 	juju-log "openidc-client-relation-departed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-    relation-set agent_name="$AGENT_NAME";
+    relation-set CLIENT_ID="$CLIENT_ID";
 }
 
 function broken() {

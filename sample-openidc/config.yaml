@@ -1,14 +1,15 @@
 options:
-  string-option:
+  client_id:
     type: string
-    default: "Default Value"
-    description: "A short description of the configuration option"
-  boolean-option:
-    type: boolean
-    default: False
-    description: "A short description of the configuration option"
-  int-option:
-    type: int
-    default: 9001
-    description: "A short description of the configuration option"
-
+    default: "OIDCAgent"
+    description: The OpenID Connect client id.
+  client_secret:
+    type: string
+    default: "secret"
+    description: The OpenID Connect client secret password.
+  redirect_path:
+    type: string
+    value: null
+    description: |
+      Only the path part of the full URI. The given hostname of the instance will be used for the hostname, that have to match what's registered in the app and is were the user
+      is sent after successfull authentication.

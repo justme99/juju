@@ -17,7 +17,7 @@ options:
       The amadmin password will only be set on initial installation, it can not be changed using the charm config after installation.
       .
       This field is mandatory.
-  FQDN_server_alias:
+  FQDN_OpenAM_alias:
     type: string
     value: null
     description: |

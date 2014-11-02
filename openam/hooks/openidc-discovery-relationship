@@ -1,11 +1,14 @@
 #!/bin/bash -ex
 . hooks/common
 CLIENT_SECRET="secret";
+CLIENT_ID="OIDCAgent";
+AGENT_TYPE="OAuth2Client";
 
 function joined() {
 	juju-log "openidc-discover-relation-joined invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-	relation-set openam_url="https://$(unit-get public-address):$(config-get https_port)/openam";
-	relation-set client_secret="$CLIENT_SECRET";
+#	relation-set openam_url="https://$(unit-get public-address):$(config-get https_port)/openam";
+	relation-set metadataURL="https://$(unit-get public-address):$(config-get https_port)/openam/.well-known/openid-configuration";
+#	relation-set client_id="$CLIENT_ID";
 }
 
 function changed() {
@@ -14,8 +17,9 @@ function changed() {
     if [ -z "$REDIRECT_URI" ]; then
     	return;
     fi
-    AGENT_NAME=$(relation-get agent_name);
-    AGENT_TYPE=$(relation-get agent_type);
+
+    CLIENT_ID=$(relation-get client_id);
+#    AGENT_TYPE=$(relation-get agent_type);
 
 # Export policy
 # /opt/demo/openam/ssoadm/openam/bin/ssoadm list-policies --realm / --adminid amadmin --password-file /opt/demo/openam/ssoadm/pwd.txt --policynames OAuth2ProviderPolicy --outfile oidc-policy.xml-org -v
@@ -68,7 +72,7 @@ add-svc-realm \
 # Create the OIDC/OAuth2 Agent
 create-agent \
 	--verbose \
-	--agentname $AGENT_NAME \
+	--agentname $CLIENT_ID \
 	--agenttype $AGENT_TYPE \
 	--realm $OPENAM_REALM \
   	--adminid $OPENAM_ADMIN \
@@ -102,7 +106,7 @@ EOF
 
 function departed() {
 	juju-log "openidc-discover-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
-	AGENT_NAME=$(relation-get agent_name);
+	CLIENT_ID=$(relation-get CLIENT_ID);
 cat << EOF > ssoadm-batch
 remove-svc-realm \
 	--verbose \
@@ -114,7 +118,7 @@ remove-svc-realm \
     # Delete the agent if present
 delete-agents \
 	--verbose \
-	--agentnames $AGENT_NAME \
+	--agentnames $CLIENT_ID \
 	--realm $OPENAM_REALM \
     --adminid $OPENAM_ADMIN \
     --password-file $PWDFILE

@@ -268,7 +268,7 @@ EOF
     echo "JAVA_OPTS=\"$JAVA_ARGS\"" >>  /usr/share/tomcat7/bin/setenv.sh
 	juju-log "JAVA_OPTS is set to: $JAVA_ARGS";
 
-	HOST_ALIAS=$(config-get FQDN_server_alias);
+	HOST_ALIAS=$(config-get FQDN_OpenAM_alias);
 	# Need to add a host alias ?, if using the default EC2 etc. generated one make cookies hostbased.
 	if [ ! -z "$HOST_ALIAS" ]; then
 		$SSOADM update-server-cfg \
@@ -368,26 +368,6 @@ function install-ssoadm() {
 	fi
 	juju-log "done."
 }
-
-#function sethostname() {
-#	PUBLIC_ADDRESS=$(unit-get public-address);
-#	HOST_ALIAS=$(config-get FQDN_server_alias);
-	#
-	# If the user has entered a FQDN to be used as the hostname for this server use that as default.
-	# 
- #   if [ ! -z $HOST_ALIAS ]; then
- #       PUBLIC_HOSTNAME="$HOST_ALIAS";
- #       if [ ! -z "$(nslookup -timeout=2 $PUBLIC_HOSTNAME | grep '** server can')" ]; then
- #       	# If it does not resolve, add it to the local hostfile, assuming a local mapping is in place.
- #           if [ -z $(grep "$PUBLIC_HOSTNAME" /etc/hosts) ]; then
- #               echo "127.0.0.1 $PUBLIC_HOSTNAME" >> /etc/hosts;
- #           fi
- #       fi
- #  	else
- #       PUBLIC_HOSTNAME="$PUBLIC_ADDRESS";
-# 	fi
-# 	PUBLIC_HOSTNAME="$PUBLIC_ADDRESS";
-#}
 
 function tomcatObtainTomcatLock() {
 	(umask 0077; touch /etc/tomcat7/tomcat.lock)

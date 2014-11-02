@@ -48,7 +48,7 @@ th,td {
 </STYLE>
 </head>
 <body>
-<h1 style="margin-top: 5%;">ForgeRock OpenAM<br>demo</h1>
+<h1 style="margin-top: 5%;">ForgeRock OpenAM</h1>
 <h4 class="lowercase">Apache Web agent</h4>
 
 <div class="box1">
