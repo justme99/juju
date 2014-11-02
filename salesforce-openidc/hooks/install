@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function install() {
+	juju-log "install"
+}
+
+function config_changed() {
+        juju-log "Config changed";
+}
+
+function start() {
+	juju-log "started";
+}
+
+function stop() {
+	juju-log "stopped";
+}
+
+cmd=$(basename "$0")
+case "$cmd" in
+	config-changed | upgrade-charm)
+        ;;
+	install)
+        install;
+        ;;
+    start)
+		start;
+		;;
+	stop)
+		stop;
+		;;
+esac

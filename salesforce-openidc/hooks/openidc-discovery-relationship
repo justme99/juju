@@ -1,0 +1,51 @@
+#!/bin/bash -ex
+
+function joined() {
+        juju-log "openidc-discover-relation-joined invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+        relation-set metadataURL="https://login.salesforce.com/.well-known/openid-configuration";
+#        CLIENT_ID=$(config-get client_id);
+#        if [ -z "$CLIENT_ID" ]; then
+#                juju-log "client_id need to be set.";
+#                exit 1;
+#        fi
+#        relation-set client_id="$(config-get client_id)";
+#
+#        CLIENT_SECRET=$(config-get client_secret);
+#        if [ -z "$CLIENT_SECRET" ]; then
+#                juju-log "Client_secret need to be set.";
+#                exit 1;
+#        fi
+#        relation-set client_secret="$(config-get client_secret)";
+}
+
+function changed() {
+	juju-log "openidc-discover-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	juju-log "Changed done."
+}
+
+function departed() {
+	juju-log "openidc-discover-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	juju-log "Departed done."
+}
+
+function broken() {
+	juju-log "openidc-discover-relation-broken invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	juju-log "Broken done."
+}
+
+cmd=$(basename "$0")
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	openidc-discovery-relation-changed)
+        changed;
+        ;;
+	openidc-discovery-relation-departed)
+        departed;
+        ;;
+    openidc-discovery-relation-joined)
+		joined;
+		;;
+	openidc-discovery-relation-broken)
+		broken;
+		;;
+esac

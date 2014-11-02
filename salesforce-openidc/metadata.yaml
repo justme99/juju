@@ -1,0 +1,14 @@
+name: salesforce-openidc
+summary: ForgeRock - Salesforce OpenID Connect wrapper
+maintainer: Stein Myrseth <stein.myrseth@forgerock.com>
+description: |
+  <Multi-line description here>
+categories:
+  - misc
+subordinate: false
+provides:
+  openidc-discovery:
+    interface: openidc
+    sets: [metadataURL]
+    gets: [client_id, client_secret, redirect_uri]
+ 

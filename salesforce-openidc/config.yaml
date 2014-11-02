@@ -1,0 +1,15 @@
+options:
+#  client_id:
+#    type: string
+#    value: null
+#    description: The client ID of the application to be accessed.
+#  client_secret:
+#    type: string
+#    value: null
+#    description: The client secret to be used to authenticate against the application.
+#  redirect_path:
+#    type: string
+#    value: null
+#    description: |
+#      Only the path part of the full URI. The given hostname of the instance will be used for the hostname, that have to match what's registered in the app and is were the user
+#      is sent after successfull authentication.
