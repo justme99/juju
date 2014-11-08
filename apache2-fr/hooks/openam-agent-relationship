@@ -55,7 +55,7 @@ ENDCONFIG
     ./bin/agentadmin --install --acceptLicense --useResponse httpd_pa_config.conf
 
     chown -R www-data $AGENT_HOME;
-
+    sleep 10;
     service apache2 start
     juju-log "OpenAM Apache PA installation complete."
 }

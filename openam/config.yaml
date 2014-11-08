@@ -3,8 +3,7 @@ options:
     default: false
     description: |
       This otions is mandatory.
-      .
-      You have to accept the OpenDJ license terms before installation can proceed.
+      You have to accept the OpenAM license terms before installation can proceed.
       The lisence terms can be found as part of the source in file named 'license.txt'.
     type: boolean
   Amadmin_password:
@@ -13,9 +12,7 @@ options:
     description: |
       You have to provide a private OpenAM amadmin password before installation can be done.
       Administrator password must be atleast 8 characters.
-      .
       The amadmin password will only be set on initial installation, it can not be changed using the charm config after installation.
-      .
       This field is mandatory.
   FQDN_OpenAM_alias:
     type: string
@@ -24,7 +21,6 @@ options:
       Add this Fully Qualified Domain Name (FQDN) to be a valid hostname supported by OpenAM.
       If you already have a valid FQDN you wanna use, or by any other reasons need to provide a full hostname enter it here.
       The default (unit-get public-address) will be used as default but the alias will be added in addition. 
-      .
       This field is optional.
   http_port:
     type: int

@@ -1,4 +1,5 @@
 #!/bin/bash -ex
+. hooks/common
 
 function changed() {
 	juju-log "replication-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
@@ -8,7 +9,7 @@ function changed() {
 	local_id=$(echo $unit | cut -d/ -f2);
 	remote_unit_id=$(echo $remote_unit | cut -d/ -f2);
 	if [ "$local_id" -lt "$remote_unit_id" ]; then
-		juju-log "Let the unit with the highest id number (last one) should set up replication."
+		juju-log "Let the unit with the highest id number (last one) set up replication."
 		return;
 	fi
 	REPLICATION_IP=$(relation-get remote_unit_private_hostname);
@@ -16,31 +17,32 @@ function changed() {
     juju-log "REPLICATION_IP is not set yet, returning a waiting for a new call."
     return;
   fi
+  MANAGER_PWD=$(config-get manager_password);
 	LOCAL_IP=$(unit-get private-address);
-	juju-log "local_hostname:$local_hostname, remote_hostname:$remote_hostname";
+	juju-log "LOCAL_IP:$LOCAL_IP, REPLICATION_IP:$REPLICATION_IP";
   #
   # Configure replication
   #
-  /opt/opendj/bin/dsreplication enable \
+  $OPENDJ_HOME/bin/dsreplication enable \
     --host1 $REPLICATION_IP \
     --port1 5555 \
     --bindDN1 "cn=directory manager" \
-    --bindPassword1 secret12 \
+    --bindPassword1 $MANAGER_PWD \
     --replicationPort1 8989 \
     --host2 $LOCAL_IP \
     --port2 5555 \
     --bindDN2 "cn=directory manager" \
-    --bindPassword2 secret12 \
+    --bindPassword2 $MANAGER_PWD \
     --replicationPort2 8989 \
     --adminUID admin \
     --adminPassword password \
     --baseDN "dc=example,dc=com" \
     --trustAll \
-    --no-prompt || true;
+    --no-prompt;
   #
   # Initialize replication
   #
-  /opt/opendj/bin/dsreplication initialize \
+  $OPENDJ_HOME/bin/dsreplication initialize \
     --baseDN "dc=example,dc=com" \
     --adminUID admin \
     --adminPassword password \
@@ -49,7 +51,20 @@ function changed() {
     --hostDestination $LOCAL_IP \
     --portDestination 5555 \
     --trustAll \
-    --no-prompt || true;
+    --no-prompt;
+
+}
+#
+#  get replication status
+#
+function status() {
+    $OPENDJ_HOME/bin/dsreplication status \
+      --baseDN dc=example,dc=com \
+      --adminUID admin \
+      --adminPassword password \
+      --hostname $LOCAL_IP \
+      --port 5555 \
+      --trustAll \;
 }
 
 function joined() {
@@ -60,15 +75,17 @@ function joined() {
 function departed() {
   juju-log "ldap-relation-departed";
   LOCAL_IP=$(unit-get private-address);
+  MANAGER_PWD=$(config-get manager_password);
 
-  /opt/opendj/bin/dsreplication disable \
+  $OPENDJ_HOME/bin/dsreplication disable \
   --disableAll \
   --port 5555 \
   --hostname $LOCAL_IP \
   --bindDN "cn=Directory Manager" \
-  --adminPassword password \
+  --adminPassword $MANAGER_PWD \
   --trustAll \
-  --no-prompt || true;
+  --no-prompt;
+  juju-log "OpenDJ replication removed on node: $LOCAL_IP."
 }
 
 function broken() {
@@ -79,15 +96,19 @@ cmd=$(basename "$0")
 juju-log "CMD:$cmd:";
 case "$cmd" in
 	replication-relation-changed)
-        changed;
-        ;;
+      changed;
+      status;
+      ;;
 	replication-relation-departed)
-        departed;
-        ;;
-    replication-relation-joined)
-		joined;
-		;;
+      departed;
+      ;;
+  replication-relation-joined)
+		  joined;
+		  ;;
 	replication-relation-broken)
-		#broken;
-		;;
+		  broken;
+		  ;;
+  replication-status)
+      status;
+      ;;
 esac

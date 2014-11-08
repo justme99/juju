@@ -24,7 +24,7 @@ function changed() {
         if  [ -z "$METADATAURL" ]; then
             return;
         fi
-
+        service apache2 stop;
         CLIENT_ID=$(config-get client_id);
         CLIENT_SECRET=$(config-get client_secret);
         HOSTNAME_PUBLIC=$(unit-get public-address);
@@ -101,9 +101,10 @@ EOF
     a2dissite default;
     a2enmod auth_openidc;
     a2ensite oidc;
-    service apache2 restart;
+
     open-port 443;
     close-port 80;
+    service apache2 start;
     juju-log "done."
 }
 
@@ -114,13 +115,14 @@ function departed() {
 
 function broken() {
 	juju-log "openidc-client-relation-broken on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+    service apache2 stop;
     # Enabling the new default initial config
     a2dissite oidc;
     a2dismod auth_openidc;
     a2ensite default;
     close-port 443;
     open-port 80;
-    service apache2 restart;
+    service apache2 start;
 }
 
 cmd=$(basename "$0");

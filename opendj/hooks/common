@@ -1,0 +1,4 @@
+#!/bin/bash -e
+OPENDJ_FILE="OpenDJ-2.6.1.zip";
+#OPENDJ_HOME=/opt/opendj;
+OPENDJ_HOME=$CHARM_DIR/opendj;

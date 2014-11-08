@@ -1,8 +1,5 @@
 #!/bin/bash -ex
-
-OPENDJ_FILE="OpenDJ-2.6.1.zip";
-#OPENDJ_HOME=/opt/opendj;
-OPENDJ_HOME=$CHARM_DIR/opendj;
+. hooks/common
 
 function install() {
 	LICENSE_ACCEPTED=$(config-get accept_license);
