@@ -17,7 +17,7 @@ function changed() {
     juju-log "REPLICATION_IP is not set yet, returning a waiting for a new call."
     return;
   fi
-  MANAGER_PWD=$(config-get manager_password);
+  MANAGER_PWD=$(config-get _manager_password);
 	LOCAL_IP=$(unit-get private-address);
 	juju-log "LOCAL_IP:$LOCAL_IP, REPLICATION_IP:$REPLICATION_IP";
   #

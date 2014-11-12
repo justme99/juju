@@ -3,12 +3,19 @@
 . hooks/common
 
 function install() {
-	apt-get -y -qq install apache2 php5 libjansson4;
+	# Precise, default is 2.2 ?
+	if [ ! -z $(grep precise /etc/lsb-release) ]; then
+		apt-add-repository -y ppa:ptn107/apache;
+		apt-add-repository -y ppa:ondrej/php5;
+		apt-get update;
+	fi
+
+	apt-get -y -qq install apache2 php5 libjansson4 libapache2-mod-php5;
 	apt-get -f -y -qq install;
-	sudo a2enmod include;
-	sudo a2enmod php5;
+
 	wget -q $REPO_HOME/$OIDC_MODULE;
 	dpkg -i $OIDC_MODULE;
+	apt-get -y -qq --fix-broken install;
 
 	mkdir -p /var/www/oidc
 	cp -r $CHARM_DIR/oidc/* /var/www/oidc/
@@ -25,9 +32,9 @@ cat << EOF >> $DEFAULT_CONF_FILE;
         </Directory>
 </VirtualHost>
 EOF
+	a2enmod include php5 authn_core ssl;
 	a2dissite 000-default
 	a2ensite default
-	a2enmod ssl
 	service apache2 reload
 	open-port 80
 	sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \

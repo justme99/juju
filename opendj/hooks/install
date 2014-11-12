@@ -2,14 +2,14 @@
 . hooks/common
 
 function install() {
-	LICENSE_ACCEPTED=$(config-get accept_license);
+	LICENSE_ACCEPTED=$(config-get _accept_license);
 	juju-log "LICENSE_ACCEPTED:$LICENSE_ACCEPTED";
 	if [ "${LICENSE_ACCEPTED}" != "True" ]; then
 		juju-log "License has to be accepted before installing."
 		exit 1
 	fi
 	REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
-	apt-get -y -qq install unzip default-jre;
+	apt-get -y -qq install unzip openjdk-7-jre;
 	wget -q $REPO_HOME/$OPENDJ_FILE;
 
 	SHA_0=$(<$CHARM_DIR/$OPENDJ_FILE.sha);
@@ -24,7 +24,7 @@ function install() {
 function setupDJ() {
 	HOSTNAME=$(unit-get public-address);
 	# Configuration parameters
-	MANAGER_PWD=$(config-get manager_password);
+	MANAGER_PWD=$(config-get _manager_password);
 	if [ -z "${MANAGER_PWD}" ]; then
 		juju-log "OpenDJ manager password has to be set before installation can continue!!.";
 		exit 1;

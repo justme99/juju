@@ -78,9 +78,9 @@ $headers = apache_request_headers();
 
 //print_r($headers);
 
-$familyName = $headers['OIDC_CLAIM_name'];
+$nonce = $headers['OIDC_CLAIM_nonce'];
 
-if(!empty($familyName)){
+if(!empty($nonce)){
         $logout = $headers['OIDC_CLAIM_iss'];
         $idtoken = $headers['OIDC_CLAIM_at_hash'];
         foreach ($headers as $header => $value) {

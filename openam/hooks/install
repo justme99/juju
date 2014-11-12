@@ -9,7 +9,7 @@ export OPENAM_HOME="$CHARM_DIR/openam";
 export PUBLIC_HOSTNAME=$(unit-get public-address);
 
 function install() {
-	apt-get -y -qq install unzip default-jre tomcat7;
+	apt-get -y -qq install unzip openjdk-7-jre tomcat7;
 
 	ACCEPT_LICENSES=$(config-get Accept_license);
 	juju-log "ACCEPT_LICENSES:$ACCEPT_LICENSES";
@@ -17,7 +17,7 @@ function install() {
 		juju-log "License has to be accepted before installing."
 		exit 1
 	fi
-    
+
     AMADMIN_PWD=$(config-get Amadmin_password);
     if [ -z "${AMADMIN_PWD}" ]; then
 		juju-log "OpenAM amadmin password has to be set before installation can proceed."
@@ -27,17 +27,17 @@ function install() {
 		juju-log "Administrator password must be atleast 8 characters."
 		exit 1
 	fi
-	
+
 	cd $CHARM_DIR;
 
 	# Download WAR file
 	wget -q $REPO_HOME/$OPENAM_WAR;
-	SHA_0=$(<$CHARM_DIR/$OPENAM_WAR.sha);
-	SHA_1=$(sha1sum $OPENAM_WAR | cut -d' ' -f1);
-	if [ "$SHA_0" != "$SHA_1" ]; then
-		juju-log "Checksum error for $OPENAM_WAR";
-		exit 1;
-	fi
+#	SHA_0=$(<$CHARM_DIR/$OPENAM_WAR.sha);
+#	SHA_1=$(sha1sum $OPENAM_WAR | cut -d' ' -f1);
+#	if [ "$SHA_0" != "$SHA_1" ]; then
+#		juju-log "Checksum error for $OPENAM_WAR";
+#		exit 1;
+#	fi
 
 	# Download SSOADM archive
 	wget -q $REPO_HOME/$SSOADM_FILE;
@@ -59,7 +59,9 @@ function install() {
 	fi
 
 	# Keep original Tomcat server.xml file for later patching when config is changed.
-	cp $TOMCAT_CONFIG_FILE $TOMCAT_CONFIG_FILE-org;
+	if [ ! -f $TOMCAT_CONFIG_FILE-org ]; then
+		cp $TOMCAT_CONFIG_FILE $TOMCAT_CONFIG_FILE-org;
+	fi
 
 	if [ -f $TOMCAT_HOME/webapps/ROOT/index.html ]; then
 		rm $TOMCAT_HOME/webapps/ROOT/index.html
@@ -122,7 +124,7 @@ END
     chown -R tomcat7 $TOMCAT_HOME/webapps;
 
     start;
-    
+
     #
     # Have to wait until Tomcat has started and OpenAM id deployed
     #
@@ -150,10 +152,7 @@ END
 		exit 1;
 	fi
 
-#	sethostname;
-
     DOMAIN=$(echo "$PUBLIC_HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
-#   DOMAIN=$(echo $PUBLIC_HOSTNAME | cut -d"." -f2-);
 
     juju-log "Running configurator for '$PUBLIC_HOSTNAME' with domain: '$DOMAIN'."
 
@@ -186,7 +185,7 @@ ENDCONFIG
 	if [ ! -f "tool.jar" ]; then
 		ln -s openam-configurator-tool*.jar tool.jar;
 	fi
-	
+
 	java -jar tool.jar -f ./config.conf;
 	juju-log "Done deploying OpenAM in Tomcat."
 }
@@ -196,7 +195,6 @@ ENDCONFIG
 # is no need to do a complete reinstall of OpenAM.
 #
 function config-changed() {
-	
 	# If amadmin password is changed, just ignore. The initial will be used.
 	AMADMIN_PWD=$(config-get Amadmin_password);
 	OLD_PWD="";
@@ -208,27 +206,25 @@ function config-changed() {
     	juju-log "Changing the amdadmin password after installation is not supportted";
     	config-set Amadmin_password="$OLD_PWD";
     fi
-	
-#    sethostname;
 
 	if [ -z $(echo $PUBLIC_HOSTNAME | sed 's/\.//g' | sed 's/[0-9]//g') ]; then
 		juju-log "OpenAM needs a FQDN to be installed. Can not use pure IP: $PUBLIC_HOSTNAME";
 		exit 1;
 	fi
-    
+
     HTTP_PORT=$(config-get http_port);
     HTTPS_PORT=$(config-get https_port);
-    
+
     OPENAM_ADMIN="amadmin";
     OPENAM_URL="http://$PUBLIC_HOSTNAME:$HTTP_PORT";
     OPENAM_DEPLOYMENT_URI="/openam";
-    
+
     #
     # Tomcat updated configuration
 
     cp $TOMCAT_CONFIG_FILE-org $TOMCAT_CONFIG_FILE
-    
-    #http_port
+
+    # http_port
     OLD_PORT=$(grep -i "Connector port=\"" $TOMCAT_CONFIG_FILE | grep -v "SSL" | grep -v "AJP" | cut -d'"' -f2);
     OLD_SSL_PORT=$(grep -i "Connector port=\"" $TOMCAT_CONFIG_FILE | grep "SSL" | grep -v "AJP" | cut -d'"' -f2);
     close-port ${OLD_PORT};
@@ -278,7 +274,7 @@ EOF
 			--attributevalues com.sun.identity.server.fqdnMap[$HOST_ALIAS]=$HOST_ALIAS;
 		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
 
-    	DOMAIN=$(echo "$PUBLIC_HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
+#    	DOMAIN=$(echo "$PUBLIC_HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
 
 		$SSOADM set-realm-attrs \
 			--realm / \
@@ -287,33 +283,16 @@ EOF
 			--password-file $PWDFILE \
 			--append \
 			--attributevalues sunOrganizationAliases=$HOST_ALIAS;
-
-#    	juju-log "Adding cookie domain: .$DOMAIN"
-#		$SSOADM set-attr-defs \
-#			--servicename iPlanetAMPlatformService \
-#			--schematype global \
-#			--adminid amadmin \
-#			--password-file $PWDFILE \
-#			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
-#
-#    	DOMAIN=$(echo "$HOST_ALIAS" | awk -F "." '{print $(NF-1)"."$NF}');
-#   	juju-log "Adding cookie domain: .$DOMAIN"
-#		$SSOADM set-attr-defs \
-#			--servicename iPlanetAMPlatformService \
-#			--schematype global \
-#			--adminid amadmin \
-#			--password-file $PWDFILE \
-#			--attributevalues "iplanet-am-platform-cookie-domains=.$DOMAIN";
-#		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
 	fi
+
 	$SSOADM set-attr-defs \
 		--servicename iPlanetAMPlatformService \
 		--schematype global \
 		--adminid amadmin \
 		--password-file $PWDFILE \
 		--attributevalues "iplanet-am-platform-cookie-domains=";
-	juju-log "OpenAM using hostbased cookies.";
-	
+
+	juju-log "OpenAM configured to use hostbased cookies.";
 	juju-log "OpenAM configurator completed.";
 }
 

@@ -5,9 +5,15 @@
 #export APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
 
 function install() {
-	apt-get -y -qq install unzip default-jre apache2 php5;
-	sudo a2enmod include;
-	sudo a2enmod php5;
+		# Precise, default is 2.2 ?
+	if [ ! -z $(grep precise /etc/lsb-release) ]; then
+		apt-add-repository -y ppa:ptn107/apache;
+		apt-add-repository -y ppa:ondrej/php5;
+		apt-get update;
+	fi
+	apt-get -y -qq install unzip openjdk-7-jre apache2 php5 libapache2-mod-php5;
+	a2enmod include;
+	a2enmod php5;
 	wget -q $REPO_HOME/$AGENT_FILE;
 
 	mkdir -p /var/www/irm

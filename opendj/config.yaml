@@ -1,14 +1,14 @@
 options:
-  accept_license:
+  _accept_license:
     default: false
     description: |
       This otions is mandatory.
       You have to accept the OpenDJ license terms before installation can proceed.
       The license terms can be found as part of the source in file named 'license.txt'.
     type: boolean
-  manager_password:
+  _manager_password:
     description: |
-      This options is Mandatory.
+      This options is mandatory.
       You have to provide a private OpenDJ 'Directory Manager' password before installation can proceed.
     type: string
     value: null

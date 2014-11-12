@@ -9,7 +9,7 @@ function joined() {
 
 	relation-set base_dn=$(config-get base_dn);
 	relation-set ldap_port=$(config-get ldap_port);
-	relation-set manager_password=$(config-get manager_password);
+	relation-set manager_password=$(config-get _manager_password);
 	relation-set hostname=$(unit-get private-address);
 	relation-set auth_name=$AUTH_NAME;
 	relation-set auth_type=$AUTH_TYPE;

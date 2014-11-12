@@ -2,7 +2,7 @@
 
 export REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
 
-export OPENAM_WAR="OpenAM-12.0.0-SNAPSHOT.war";
+export OPENAM_WAR="OpenAM-12.0.0-SNAPSHOT1.war";
 export CONFIGURATOR_FILE="SSOConfiguratorTools-12.0.0-SNAPSHOT.zip";
 export SSOADM_FILE="SSOAdminTools-12.0.0-SNAPSHOT.zip";
 
