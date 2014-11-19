@@ -10,10 +10,11 @@ function departed() {
 	juju-log "openam-agent-relation-departed on $JUJU_UNIT_NAME invoked ${JUJU_REMOTE_UNIT%/*}";
 	AGENT_NAME=$(relation-get agent_name);
 
-    $SSOADM delete-agents --realm / \
-        --agentnames $AGENT_NAME \
-        --adminid amadmin \
-       	--password-file $PWDFILE || true;
+# Not deleting the Agent, it can be other applications using the agent with the same name. 
+#    $SSOADM delete-agents --realm / \
+#        --agentnames $AGENT_NAME \
+#        --adminid amadmin \
+#       	--password-file $PWDFILE || true;
 }
 
 function broken() {
@@ -32,13 +33,14 @@ function changed() {
     if [ -z "$APACHE_PORT" ]; then
     	return;
     fi
-    AGENT_URL=$(relation-get agent_url);
+
     AGENT_NAME=$(relation-get agent_name);
     AGENT_TYPE=$(relation-get agent_type);
+    AGENT_URL=$(relation-get agent_url);    
 
 	$SSOADM create-agent --realm / \
     	--agentname $AGENT_NAME \
-        --agenttype WebAgent \
+        --agenttype $AGENT_TYPE \
         --attributevalues \
         "userpassword=pacangetin" \
         "com.sun.identity.agents.config.sso.only=true" \

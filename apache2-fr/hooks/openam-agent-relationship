@@ -3,8 +3,8 @@
 PUBLIC_HOSTNAME=$(unit-get public-address);
 HOSTNAME=$(echo $PUBLIC_HOSTNAME | cut -d'.' -f1);
 #AGENT_NAME="Apache24-$HOSTNAME";
-AGENT_NAME="Apache24";
-AGENT_TYPE="WebAgent";
+AGENT_NAME=$(config-get agent_name);
+
 APACHE_PORT=$(grep "^Listen" /etc/apache2/ports.conf | cut -d" " -f2);
 AGENT_URL="http://$(unit-get public-address):$APACHE_PORT/";
 AGENT_HOME="$CHARM_DIR/web_agents/apache24_agent";
@@ -15,7 +15,7 @@ function joined() {
     relation-set apache_port="$APACHE_PORT";
     relation-set agent_url="$AGENT_URL";
     relation-set agent_name="$AGENT_NAME";
-    relation-set agent_type="$AGENT_TYPE";
+    relation-set agent_type=$(config-get agent_type);
 }
 
 function changed() {
@@ -55,8 +55,10 @@ ENDCONFIG
     ./bin/agentadmin --install --acceptLicense --useResponse httpd_pa_config.conf
 
     chown -R www-data $AGENT_HOME;
-    sleep 10;
+#    sleep 10;
     service apache2 start
+    # Sometimes I get a 403 error, this removes it....
+    service apache2 restart
     juju-log "OpenAM Apache PA installation complete."
 }
 

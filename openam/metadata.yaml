@@ -22,8 +22,9 @@ provides:
 #    interface: openidc
 #    optional: true
   datastore-dj:
-     interface: ldap-v3
+     interface: datastore
      optional: true
+     gets: [base_dn, ldap_port, manager_password, hostname, auth_name, auth_type]
 #  datastore-ad:
 #     interface: ldap-ad
 #     optional: true

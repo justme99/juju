@@ -7,13 +7,14 @@ description: |
   - See more at: http://forgerock.com/products/open-identity-stack/opendj
 categories: ["applications"]
 subordinate: false
-#provides:
-#  ldap:
-#     interface: ldap-v3
 requires:
   datastore-dj:
-     interface: ldap-v3
+     interface: datastore
      optional: true
+     sets: [base_dn, ldap_port, manager_password, hostname, auth_name, auth_type]
+  generic:
+     interface: ldap-v3
+     sets: [ldap_port]
 #  splunk:
 #     interface: splunk-forwarder
 #     optional: true

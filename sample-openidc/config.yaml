@@ -1,15 +1,28 @@
 options:
-  client_id:
+  oidc_client_id:
     type: string
     default: "OIDCAgent"
     description: The OpenID Connect client id.
-  client_secret:
+  oidc_client_secret:
     type: string
     default: "secret"
     description: The OpenID Connect client secret password.
-  redirect_path:
+  oidc_scope:
     type: string
-    value: null
+    default: "openid profile"
+    description: The OpenID Connect client secret password.
+  oidc_client_name:
+    type: string
+    default: OIDC-DEMO
+    description: The name of the client to registred to the provider.
+#  oidc_request_uri:
+#    type: string
+#    value: null
+#    description: |
+#      Only the path part of the full URI. The given hostname of the instance will be used for the hostname, that have to match what's registered in the app and is were the user
+#      is sent after successfull authentication.
+  oidc_redirect_uri:
+    type: string
+    value: /secret
     description: |
-      Only the path part of the full URI. The given hostname of the instance will be used for the hostname, that have to match what's registered in the app and is were the user
-      is sent after successfull authentication.
+      Mandatory field. Provide only the "path" like /secret relative to the default host and port on this instance. If a full URI it will be used.

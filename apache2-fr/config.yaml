@@ -1,1 +1,10 @@
 options:
+  agent_name:
+    type: string
+    default: Apache24
+    description: The name of the agent to connect to in OpenAM. If not present OpenAM will create it.
+  agent_type:
+    type: string
+    default: WebAgent
+    description: The OpenAM agent type to be created.
+    

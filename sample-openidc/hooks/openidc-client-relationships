@@ -1,42 +1,67 @@
 #!/bin/bash -ex
 . hooks/common
 
-REDIRECT_URI="https://$(unit-get public-address)/secret";
-
 function joined() {
     juju-log "openidc-client-relation-joined on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+    R_URI=$(config-get oidc_redirect_uri);
+    if [ -z "$R_URI" ]; then
+        juju-log "Redirect URI need to be provied";
+        exit 1;
+    fi
+    if [[ "$R_URI" =~ ^http.* ]]; then
+        REDIRECT_URI="$R_URI";
+    else
+        REDIRECT_URI="https://$(unit-get public-address)/secret";
+    fi
+
     juju-log "REDIRECT_URI:$REDIRECT_URI";
     relation-set redirect_uri="$REDIRECT_URI";
-    CLIENT_ID=$(config-get client_id);
+    CLIENT_ID=$(config-get oidc_client_id);
     if [ ! -z "$(echo $JUJU_REMOTE_UNIT | grep openam)" ]; then
         CLIENT_ID="OIDCAgent";
     else
-        CLIENT_ID=$(config-get client_id);
+        CLIENT_ID=$(config-get oidc_client_id);
     fi
    relation-set client_id="$CLIENT_ID";
 }
+
+#oidc_client_id:
+#oidc_client_secret:
+#oidc_scope:
+#oidc_client_name:
+#oidc_request_uri:
+#oidc_redirect_uri:
 
 function changed() {
         juju-log "openidc-client-relation-changed on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
 
         METADATAURL=$(relation-get metadataURL);
-
         if  [ -z "$METADATAURL" ]; then
             return;
         fi
+        # Lets go...
         service apache2 stop;
-        CLIENT_ID=$(config-get client_id);
-        CLIENT_SECRET=$(config-get client_secret);
+
         HOSTNAME_PUBLIC=$(unit-get public-address);
+
+        # Optional fields
+        CLIENT_ID=$(config-get oidc_client_id);
+        CLIENT_SECRET=$(config-get oidc_client_secret);
+        CLIENT_NAME=$(config-get oidc_client_name);
+        SCOPE=$(config-get oidc_scope);
+        REQUEST_URI=$(config-get oidc_request_uri);
+        R_URI=$(config-get oidc_redirect_uri);
+        if [[ "$R_URI" =~ ^http.* ]]; then
+            REDIRECT_URI="$R_URI";
+        else
+            REDIRECT_URI="https://$(unit-get public-address)/secret";
+        fi
 
 cat << EOF > $OIDC_CONF_FILE;
 <VirtualHost *:443>
 SSLEngine on
 SSLCertificateFile $SSL_CERT_FILE
 SSLCertificateKeyFile $SSL_KEY_FILE
-
-#Session On
-#SessionCookieName session path=/
 
 ServerName $HOSTNAME_PUBLIC
 
@@ -53,14 +78,20 @@ EOF
 
 if [ ! -z "$(echo $JUJU_REMOTE_UNIT | grep salesforce)" ]; then
 echo "$REDIRECT_URI?logout=https://login.salesforce.com" > /var/www/oidc/oidc_logout.txt;
-# Salesforce gived you all user profile claims in the openid scope
+
+# Only 'openid' can currently be used. Salesforce gives you all user profile claims in the openid scope.
+SCOPE="openid";
+
 cat << EOF >> $OIDC_CONF_FILE;
-OIDCScope "openid"
+
+OIDCScope "$SCOPE"
 OIDCProviderMetadataURL $METADATAURL
 OIDCClientID $CLIENT_ID
 OIDCClientSecret $CLIENT_SECRET
 OIDCRedirectURI $REDIRECT_URI
+OIDCClientName $CLIENT_NAME
 OIDCCryptoPassphrase password2
+
 EOF
 fi
 #
@@ -74,17 +105,21 @@ echo "$REDIRECT_URI?logout=$OPENAM_URL/UI/Logout" > /var/www/oidc/oidc_logout.tx
 #echo "$REDIRECT_URI?logout=$OPENAM_URL/UI/Logout" > /var/www/oidc/openam_logout.txt;
 
 cat << EOF >> $OIDC_CONF_FILE;
-OIDCScope "openid profile"
-OIDCProviderIssuer $OPENAM_URL
-OIDCProviderAuthorizationEndpoint $OPENAM_URL/oauth2/authorize
-OIDCProviderTokenEndpoint $OPENAM_URL/oauth2/access_token
-OIDCProviderTokenEndpointAuth client_secret_post
-OIDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/userinfo
+
+OIDCScope "$SCOPE"
 OIDCClientID OIDCAgent
 OIDCClientSecret secret
 OIDCRedirectURI $REDIRECT_URI
+OIDCProviderMetadataURL $METADATAURL
+OIDCClientName $CLIENT_NAME
+#OIDCProviderIssuer $OPENAM_URL
+#OIDCProviderAuthorizationEndpoint $OPENAM_URL/oauth2/authorize
+#OIDCProviderTokenEndpoint $OPENAM_URL/oauth2/access_token
+#OIDCProviderTokenEndpointAuth client_secret_post
+#IDCProviderUserInfoEndpoint $OPENAM_URL/oauth2/userinfo
 # Default endSession endpoint currently broken in OpenAM, also makes it a bit broken for discovery as of 31.Oct.2014 
 #OIDCProviderEndSessionEndpoint $OPENAM_URL/oauth2/connect/endSession
+
 EOF
 fi
 
