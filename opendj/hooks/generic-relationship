@@ -1,0 +1,36 @@
+#!/bin/bash -ex
+
+function joined() {
+	juju-log "generic-relation-joined invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	relation-set ldap_port=$(config-get ldap_port);
+}
+
+function changed() {
+	juju-log "generic-relation-changed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+	open-port $(config-get ldap_port)/tcp;
+}
+
+function departed() {
+	juju-log "generic-relation-departed invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+function broken() {
+	juju-log "generic-relation-broken invoked on $JUJU_UNIT_NAME invoked $JUJU_REMOTE_UNIT";
+}
+
+cmd=$(basename "$0")
+juju-log "CMD:$cmd:";
+case "$cmd" in
+	generic-relation-changed)
+        changed;
+        ;;
+	generic-relation-departed)
+        departed;
+        ;;
+    generic-relation-joined)
+		joined;
+		;;
+	generic-relation-broken)
+		broken;
+		;;
+esac
