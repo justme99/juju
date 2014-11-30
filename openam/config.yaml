@@ -34,3 +34,7 @@ options:
     type: string
     default: -Xmx1024m -XX:MaxPermSize=256m
     description: Java options for JVM
+  DEBUG:
+    default: false
+    description: Turn on verbose julu-log 
+    type: boolean

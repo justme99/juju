@@ -17,7 +17,7 @@ provides:
   elasticsearch:
      interface: elasticsearch-appender
 requires:
-   openam-agent:
+  openam-agent:
     interface: openam-agent
     gets: [openam_url]
     sets: [apache_port, agent_url, agent_name, agent_type]

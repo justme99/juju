@@ -1,4 +1,8 @@
-#!/bin/bash -ex
+#!/bin/bash -e
+DEBUG=$(config-get DEBUG);
+if [ "${DEBUG}" == "True" ]; then
+	set -x;
+fi
 
 . hooks/common
 export TOMCAT_HOME="/var/lib/tomcat7";
@@ -32,15 +36,17 @@ function install() {
 
 	# Download WAR file
 	wget -q $REPO_HOME/$OPENAM_WAR;
-#	SHA_0=$(<$CHARM_DIR/$OPENAM_WAR.sha);
-#	SHA_1=$(sha1sum $OPENAM_WAR | cut -d' ' -f1);
-#	if [ "$SHA_0" != "$SHA_1" ]; then
-#		juju-log "Checksum error for $OPENAM_WAR";
-#		exit 1;
-#	fi
+	wget -q $REPO_HOME/$OPENAM_WAR.sha;
+	SHA_0=$(<$CHARM_DIR/$OPENAM_WAR.sha);
+	SHA_1=$(sha1sum $OPENAM_WAR | cut -d' ' -f1);
+	if [ "$SHA_0" != "$SHA_1" ]; then
+		juju-log "Checksum error for $OPENAM_WAR";
+		exit 1;
+	fi
 
 	# Download SSOADM archive
 	wget -q $REPO_HOME/$SSOADM_FILE;
+	wget -q $REPO_HOME/$SSOADM_FILE.sha;
 	SHA_0=$(<$CHARM_DIR/$SSOADM_FILE.sha);
 	SHA_1=$(sha1sum $SSOADM_FILE | cut -d' ' -f1);
 	if [ "$SHA_0" != "$SHA_1" ]; then
@@ -50,6 +56,7 @@ function install() {
 
 	# Download SSOCONFIGURATOR archive
 	wget -q $REPO_HOME/$CONFIGURATOR_FILE;
+	wget -q $REPO_HOME/$CONFIGURATOR_FILE.sha;
 
 	SHA_0=$(<$CHARM_DIR/$CONFIGURATOR_FILE.sha);
 	SHA_1=$(sha1sum $CONFIGURATOR_FILE | cut -d' ' -f1);

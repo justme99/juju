@@ -15,14 +15,15 @@ options:
     type: string
     default: OIDC-DEMO
     description: The name of the client to registred to the provider.
+  oidc_redirect_uri:
+    type: string
+    default: /secret
+    description: |
+      Mandatory field. Provide only the "path" like /secret relative to the default host and port on this instance. If a full URI it will be used.
+
 #  oidc_request_uri:
 #    type: string
 #    value: null
 #    description: |
 #      Only the path part of the full URI. The given hostname of the instance will be used for the hostname, that have to match what's registered in the app and is were the user
 #      is sent after successfull authentication.
-  oidc_redirect_uri:
-    type: string
-    value: /secret
-    description: |
-      Mandatory field. Provide only the "path" like /secret relative to the default host and port on this instance. If a full URI it will be used.

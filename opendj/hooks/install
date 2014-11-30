@@ -1,5 +1,9 @@
 #!/bin/bash -ex
 . hooks/common
+DEBUG=$(config-get DEBUG);
+if [ "${DEBUG}" == "True" ]; then
+	set -x;
+fi
 
 function install() {
 	LICENSE_ACCEPTED=$(config-get _accept_license);
@@ -11,6 +15,7 @@ function install() {
 	REPO_HOME="http://s3-eu-west-1.amazonaws.com/fr-demo-repo/juju";
 	apt-get -y -qq install unzip openjdk-7-jre;
 	wget -q $REPO_HOME/$OPENDJ_FILE;
+	wget -q $REPO_HOME/$OPENDJ_FILE.sha;
 
 	SHA_0=$(<$CHARM_DIR/$OPENDJ_FILE.sha);
 	SHA_1=$(sha1sum $OPENDJ_FILE | cut -d' ' -f1);

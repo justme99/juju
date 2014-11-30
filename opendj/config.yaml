@@ -34,3 +34,7 @@ options:
     description: |
       Enabling HTTP Access logging for OpenDJ.
     type: boolean
+  DEBUG:
+    default: false
+    description: Turn on verbose julu-log 
+    type: boolean
