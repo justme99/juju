@@ -34,7 +34,13 @@ options:
     type: string
     default: -Xmx1024m -XX:MaxPermSize=256m
     description: Java options for JVM
+  ssoadm_batch:
+    type: string
+    value: null
+    description: |
+      A collecion of SSOADM statements to be executed as a sequence of SSOADM batch statements.
+      get-attr-defs -s iPlanetAMPolicyConfigService -t Organization
   DEBUG:
     default: false
-    description: Turn on verbose julu-log 
+    description: Turn on verbose julu-logging in bash hooks.
     type: boolean

@@ -282,16 +282,22 @@ EOF
 		juju-log "Added $HOST_ALIAS to the map of supported FQDN aliases along with $PUBLIC_HOSTNAME."
 
 #    	DOMAIN=$(echo "$PUBLIC_HOSTNAME" | awk -F "." '{print $(NF-1)"."$NF}');
-
-		$SSOADM set-realm-attrs \
-			--realm / \
-			--servicename sunIdentityRepositoryService \
-			--adminid amadmin \
-			--password-file $PWDFILE \
-			--append \
-			--attributevalues sunOrganizationAliases=$HOST_ALIAS;
+		# Have to check if the host alias is already added, if so it will fail.
+		EXIST=$($SSOADM get-realm --realm / --servicename sunIdentityRepositoryService --adminid amadmin --password-file $PWDFILE | tr '\n' ' ' | grep $HOST_ALIAS) || true;
+		if [ -z "$EXIST" ]; then
+			$SSOADM set-realm-attrs \
+				--realm / \
+				--servicename sunIdentityRepositoryService \
+				--adminid amadmin \
+				--password-file $PWDFILE \
+				--append \
+				--attributevalues sunOrganizationAliases=$HOST_ALIAS;
+			juju-log "$HOST_ALIAS added to the alias list."
+		else
+			juju-log "$HOST_ALIAS is already added to the alias list."
+		fi
 	fi
-
+# ssoadm get-attr-defs --servicename iPlanetAMPlatformService --adminid amadmin --password-file /var/lib/juju/agents/unit-openam-0/charm/ssoadm/pwd.txt --schematype global --attributenames iplanet-am-platform-cookie-domains
 	$SSOADM set-attr-defs \
 		--servicename iPlanetAMPlatformService \
 		--schematype global \
@@ -300,6 +306,41 @@ EOF
 		--attributevalues "iplanet-am-platform-cookie-domains=";
 
 	juju-log "OpenAM configured to use hostbased cookies.";
+
+	SSOADM_CMD=$(config-get ssoadm_batch);
+	# Anything to be executed ?
+	RUN_BATCH="NO";
+	if [ ! -z "$SSOADM_CMD" ]; then
+    	# There is something to be executed
+      	juju-log "There is ssoadm commands present";
+        RUN_BATCH="YES";
+        if [ -f "$CHARM_DIR/ssoadm/ssoadm_batch.cmd" ]; then
+        	juju-log "There is a batch file already present";
+            # There is a file already. Is current content identical to the previous ?
+            SSOADM_OLD_CMD="$<$CHARM_DIR/ssoadm/ssoadm_batch.cmd";
+            if [ "$SSOADM_CMD" != "$SSOADM_OLD_CMD" ]; then
+            	# The content if different, replace content in file
+                echo "$SSOADM_CMD" > $CHARM_DIR/ssoadm/ssoadm_batch.cmd;
+                juju-log "The content is different, will replace"
+         	else
+            	RUN_BATCH="NO";
+                juju-log "The content was the same will ignore.";
+           	fi
+    	else
+        	echo "$SSOADM_CMD" > $CHARM_DIR/ssoadm/ssoadm_batch.cmd;
+            juju-log "Batch file not preset, will create"
+        fi
+	fi
+
+	if [ "$RUN_BATCH" = "YES" ]; then
+    	juju-log "Executing SSOADM batch commands from file $CHARM_HOME/ssoadm/ssoadm_batch.cmd"
+        $SSOADM do-batch \
+        --adminid amadmin \
+        --password-file ${PWDFILE}  \
+        --batchfile $CHARM_DIR/ssoadm/ssoadm_batch.cmd \
+        --batchstatus $CHARM_DIR/ssoadm/batch-status-file \
+        --continue;
+	fi
 	juju-log "OpenAM configurator completed.";
 }
 

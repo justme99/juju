@@ -65,9 +65,11 @@ add-svc-realm \
     --attributevalues \
 	"forgerock-oauth2-provider-authorization-code-lifetime=60" \
 	"forgerock-oauth2-provider-issue-refresh-token=false" \
-	"forgerock-oauth2-provider-scope-implementation-class=org.forgerock.openam.oauth2.provider.impl.ScopeImpl" \
 	"forgerock-oauth2-provider-refresh-token-lifetime=60000000" \
 	"forgerock-oauth2-provider-access-token-lifetime=6000000"
+
+# "forgerock-oauth2-provider-scope-implementation-class=org.forgerock.openam.oauth2.provider.impl.ScopeImpl" \
+# org.forgerock.openam.oauth2.OpenAMScopeValidator
 
 # Create the OIDC/OAuth2 Agent
 create-agent \
